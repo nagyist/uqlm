@@ -205,6 +205,9 @@ class LLMJudge(ResponseGenerator):
         """
         A method to extract score from an llm response based on provided score-keyword dictionary.
         """
+        if response in [None, np.nan]:
+            return np.nan
+    
         if self.scoring_template == "continuous":
             score = "".join(c for c in response if c.isdigit())
             if len(score) > 0:
@@ -225,7 +228,6 @@ class LLMJudge(ResponseGenerator):
             for score, keywords in self.keywords_to_scores_dict.items():
                 if any(keyword in response for keyword in keywords):
                     return score
-        return np.nan
 
     def _validate_inputs(self):
         """Validate inputs"""
