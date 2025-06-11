@@ -374,7 +374,7 @@ class UQEnsemble(UncertaintyQuantifier):
     def _normalize_weights(self, weights: List[float]) -> List[float]:
         """Normalize weights to sum to 1."""
         weights = weights if weights else [1] * len(self.components)
-        return self.tuner._normalize_weights(weights)
+        return list(self.tuner._normalize_weights(weights))
 
     def _construct_hhem(self):
         from transformers import AutoModelForSequenceClassification
@@ -390,7 +390,7 @@ class UQEnsemble(UncertaintyQuantifier):
             sig = inspect.signature(grader_function)
             params = sig.parameters
             if "response" not in params or "answer" not in params:
-                raise ValueError("grader_function must have 'resposne' and 'answer' parameters")
+                raise ValueError("grader_function must have 'response' and 'answer' parameters")
             check_val = grader_function("a", "b")
             if not isinstance(check_val, bool):
                 raise ValueError("grader_function must return boolean")
