@@ -21,9 +21,10 @@ import zipfile
 from requests.exceptions import RequestException
 from zipfile import BadZipFile
 
-from typing import List
+from typing import List, Optional
 
 from uqlm.black_box.baseclass.similarity_scorer import SimilarityScorer
+from tqdm import tqdm
 
 
 class BLEURTScorer(SimilarityScorer):
@@ -54,7 +55,12 @@ class BLEURTScorer(SimilarityScorer):
         except Exception as e:
             raise RuntimeError(f"Failed to initialize BLEURT scorer. Error: {str(e)}") from e
 
-    def evaluate(self, responses: List[str], sampled_responses: List[List[str]]) -> List[float]:
+    def evaluate(
+        self,
+        responses: List[str],
+        sampled_responses: List[List[str]],
+        progress_bar: Optional[bool] = False,
+    ) -> List[float]:
         """
         This method computes model-based text similarity metrics values for the provided pairs of texts.
 
@@ -71,7 +77,16 @@ class BLEURTScorer(SimilarityScorer):
         List of float
             Mean BLEURT scores
         """
-        return [self._compute_score(response=responses[i], candidates=sampled_responses[i]) for i in range(len(responses))]
+        iterator = (
+            tqdm(range(len(responses)), desc="Scoring responses with BLUERT-scorer...")
+            if progress_bar
+            else range(len(responses))
+        )
+
+        return [
+            self._compute_score(response=responses[i], candidates=sampled_responses[i])
+            for i in iterator
+        ]
 
     def _compute_score(self, response: str, candidates: List[str]) -> float:
         """Compute BLEURT scores between a response and candidate responses"""
@@ -103,7 +118,9 @@ class BLEURTScorer(SimilarityScorer):
                 print(f"Failed to download file. Status code: {response.status_code}")
                 return
         except RequestException as e:
-            print(f"Network error occurred while downloading BLEURT checkpoint: {str(e)}")
+            print(
+                f"Network error occurred while downloading BLEURT checkpoint: {str(e)}"
+            )
             return
         return zip_file_path
 

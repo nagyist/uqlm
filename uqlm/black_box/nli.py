@@ -17,10 +17,11 @@ import math
 import numpy as np
 import warnings
 from collections import deque, Counter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 from uqlm.black_box.baseclass.similarity_scorer import SimilarityScorer
+from tqdm import tqdm
 
 
 class NLIScorer(SimilarityScorer):
@@ -83,7 +84,14 @@ class NLIScorer(SimilarityScorer):
         probabilites = np.exp(np_logits) / np.exp(np_logits).sum(axis=-1, keepdims=True)
         return probabilites
 
-    def evaluate(self, responses: List[str], sampled_responses: List[List[str]], use_best: bool, compute_entropy: bool = False) -> Dict[str, Any]:
+    def evaluate(
+        self,
+        responses: List[str],
+        sampled_responses: List[List[str]],
+        use_best: bool,
+        compute_entropy: bool = False,
+        progress_bar: Optional[bool] = False,
+    ) -> Dict[str, Any]:
         """
         Evaluate confidence scores on LLM responses.
 
@@ -109,13 +117,40 @@ class NLIScorer(SimilarityScorer):
             The dictionary will also contain original and multiple responses, updated if `use_best` is True
         """
         self.num_responses = len(sampled_responses[0])
-        observed_consistency_data = {"noncontradiction": [], "semantic_negentropy": [], "responses": responses, "sampled_responses": sampled_responses}
-        for i, response in enumerate(responses):
-            oc_result_i = self._observed_consistency_i(original=response, candidates=sampled_responses[i], use_best=use_best, compute_entropy=compute_entropy)
-            observed_consistency_data["noncontradiction"].append(oc_result_i["nli_score_i"])
-            observed_consistency_data["semantic_negentropy"].append(oc_result_i["semantic_negentropy"])
-            responses[i] = oc_result_i["response"]  # Replace with optimized response if use_best
-            sampled_responses[i] = oc_result_i["candidates"]  # Replace with updated candidates if use_best
+        observed_consistency_data = {
+            "noncontradiction": [],
+            "semantic_negentropy": [],
+            "responses": responses,
+            "sampled_responses": sampled_responses,
+        }
+        iterator = (
+            tqdm(
+                enumerate(responses),
+                total=len(responses),
+                desc="Scoring responses with NLI...",
+            )
+            if progress_bar
+            else enumerate(responses)
+        )
+        for i, response in iterator:
+            oc_result_i = self._observed_consistency_i(
+                original=response,
+                candidates=sampled_responses[i],
+                use_best=use_best,
+                compute_entropy=compute_entropy,
+            )
+            observed_consistency_data["noncontradiction"].append(
+                oc_result_i["nli_score_i"]
+            )
+            observed_consistency_data["semantic_negentropy"].append(
+                oc_result_i["semantic_negentropy"]
+            )
+            responses[i] = oc_result_i[
+                "response"
+            ]  # Replace with optimized response if use_best
+            sampled_responses[i] = oc_result_i[
+                "candidates"
+            ]  # Replace with updated candidates if use_best
 
         if use_best:
             observed_consistency_data["responses"] = responses
