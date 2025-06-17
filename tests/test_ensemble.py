@@ -31,6 +31,7 @@ MOCKED_SAMPLED_RESPONSES = data["sampled_responses"]
 MOCKED_JUDGE_SCORES = data["judge_1"]
 MOCKED_LOGPROBS = metadata["logprobs"]
 
+
 @pytest.fixture
 def mock_llm():
     """Extract judge object using pytest.fixture."""
