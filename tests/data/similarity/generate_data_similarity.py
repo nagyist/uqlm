@@ -14,9 +14,9 @@
 
 import os
 import json
+import asyncio
 
-# import bert_score
-from uqlm.similarity import BertScorer, BLEURTScorer, CosineScorer, MatchScorer
+from uqlm.black_box import BertScorer, BLEURTScorer, CosineScorer, MatchScorer
 
 
 async def main():
@@ -46,8 +46,11 @@ async def main():
     # 2. Bleurt Scorer
     bluert = BLEURTScorer()
     bluert_result = bluert.evaluate(responses=responses, sampled_responses=sampled_responses)
+    bluert_scorer_result = []
+    for i in range(len(responses)):
+        bluert_scorer_result.append(bluert.bleurt_scorer.score(references=[responses[i]] * len(sampled_responses[i]), candidates=sampled_responses[i]))
 
-    store_results.update({"bluert_result": bluert_result})
+    store_results.update({"bluert_result": bluert_result, "bluert_score": bluert_scorer_result})
 
     # 3. Cosine Similarity Scorer
     cosine = CosineScorer()
@@ -72,4 +75,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

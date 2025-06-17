@@ -82,11 +82,13 @@ class BLEURTScorer(SimilarityScorer):
         """Sets up checkpoint"""
         resource_path = resources.files("uqlm.resources").joinpath("BLEURT-20")
         if not resource_path.is_dir():
-            self._download_and_unzip(url="https://storage.googleapis.com/bleurt-oss-21/BLEURT-20.zip", my_file_path=resources.files("uqlm.resources"))
+            my_file_path = resources.files("uqlm.resources")
+            zip_file_path = self._download(url="https://storage.googleapis.com/bleurt-oss-21/BLEURT-20.zip", my_file_path=my_file_path)
+            self._unzip(zip_file_path=zip_file_path, my_file_path=my_file_path)
         return resource_path
 
     @staticmethod
-    def _download_and_unzip(url, my_file_path):
+    def _download(url, my_file_path):
         """Download BLEURT checkpoint, unzip, and delete zip file"""
         zip_file_path = os.path.join(my_file_path, "BLEURT-20.zip")
         print(f"BLEURT checkpoint not found. Downloading to: {zip_file_path}")
@@ -103,7 +105,10 @@ class BLEURTScorer(SimilarityScorer):
         except RequestException as e:
             print(f"Network error occurred while downloading BLEURT checkpoint: {str(e)}")
             return
+        return zip_file_path
 
+    @staticmethod
+    def _unzip(zip_file_path, my_file_path):
         try:
             print(f"Unzipping: {zip_file_path}")
             with zipfile.ZipFile(zip_file_path, "r") as zip_ref:

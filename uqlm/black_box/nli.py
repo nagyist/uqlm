@@ -52,10 +52,7 @@ class NLIScorer(SimilarityScorer):
         self.max_length = max_length
         self.tokenizer = AutoTokenizer.from_pretrained(nli_model_name)
         model = AutoModelForSequenceClassification.from_pretrained(nli_model_name)
-        if self.device:
-            self.model = model.to(self.device)
-        else:
-            self.model = model
+        self.model = model.to(self.device) if self.device else model
         self.label_mapping = ["contradiction", "neutral", "entailment"]
 
     def predict(self, response1: str, response2: str) -> Any:
@@ -141,7 +138,7 @@ class NLIScorer(SimilarityScorer):
                 all_responses.remove(best_response)
                 candidates = all_responses
 
-        for i, candidate in enumerate(candidates):
+        for candidate in candidates:
             if (candidate, best_response) in scores:
                 nli_score = scores[(candidate, best_response)]
             else:
