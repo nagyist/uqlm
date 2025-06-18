@@ -86,4 +86,3 @@ class TestTuner:
         Tuner().tune_params(extended_lists, self.correct_indicators)
         # log_loss objective (obj_multiplier = -1 path)
         Tuner().tune_params(self.score_lists, self.correct_indicators, weights_objective="log_loss", thresh_objective="fbeta_score")
-

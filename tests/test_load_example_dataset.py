@@ -18,7 +18,6 @@ from uqlm.utils.dataloader import load_example_dataset, list_dataset_names, _com
 from uqlm.utils.dataloader import _dataset_processing
 
 
-
 def test_list_dataset_names():
     datasets = list_dataset_names()
     assert isinstance(datasets, list)
@@ -50,6 +49,7 @@ def test_load_dataset_with_processing():
     df = load_example_dataset("gsm8k", n=100, cols=["question", "answer"])
     assert df.shape[0] == 100
     assert list(df.columns) == ["question", "answer"]
+
 
 def test_dataset_processing_type_error():
     # tests that _dataset_processing raises a TypeError when passed something other than a pandas DataFrame
