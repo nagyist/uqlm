@@ -7,7 +7,7 @@ import os
 
 @unittest.skipIf(
     (os.getenv("CI") == "true"),
-    "Skipping test in macOS CI due to memory issues.",
+    "Skipping test in CI. Please run this check locally as needed.",
 )
 def test_import_time():
     """Test that the total import time for uqlm is less than 3 seconds."""
