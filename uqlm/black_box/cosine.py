@@ -13,11 +13,12 @@
 # limitations under the License.
 
 
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Optional
 
 import numpy as np
 from numpy.linalg import norm
-from sentence_transformers import SentenceTransformer
+import time
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 
 from uqlm.black_box.baseclass.similarity_scorer import SimilarityScorer
 
@@ -33,10 +34,12 @@ class CosineScorer(SimilarityScorer):
             https://huggingface.co/sentence-transformers?sort_models=likes#models
             for more information. The recommended sentence transformer is 'all-MiniLM-L6-v2'.
         """
+        from sentence_transformers import SentenceTransformer
+
         self.transformer = transformer
         self.model = SentenceTransformer(f"sentence-transformers/{transformer}")
 
-    def evaluate(self, responses: List[str], sampled_responses: List[List[str]]) -> List[float]:
+    def evaluate(self, responses: List[str], sampled_responses: List[List[str]], progress_bar: Optional[bool] = True) -> List[float]:
         """
         This method computes model-based text similarity metrics values for the provided pairs of texts.
 
@@ -48,12 +51,26 @@ class CosineScorer(SimilarityScorer):
         sampled_responses : list of list of strings
             Candidate responses to be compared to the original response
 
+        progress_bar : bool, default=True
+            If True, displays a progress bar while scoring responses
+
         Returns
         -------
         List of float
             Mean cosine similarity values
         """
-        return [self._compute_score(response=responses[i], candidates=sampled_responses[i]) for i in range(len(responses))]
+        if progress_bar:
+            with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn(), TextColumn("[progress.percentage]{task.completed}/{task.total}"), TimeElapsedColumn()) as progress:
+                task = progress.add_task("- [black]Scoring responses with Cosine Similarity...", total=len(responses))
+                results = []
+                for i in range(len(responses)):
+                    score = self._compute_score(response=responses[i], candidates=sampled_responses[i])
+                    results.append(score)
+                    progress.update(task, advance=1)
+                time.sleep(0.1)
+                return results
+        else:
+            return [self._compute_score(response=responses[i], candidates=sampled_responses[i]) for i in range(len(responses))]
 
     def _get_embeddings(self, texts1: List[str], texts2: List[str]) -> Tuple[Any, Any]:
         """

@@ -20,7 +20,6 @@ import shutil
 import numpy as np
 import subprocess
 import importlib.resources as resources
-import unittest
 from uqlm.black_box import BertScorer, BLEURTScorer, CosineScorer, MatchScorer
 from uqlm.black_box.baseclass.similarity_scorer import SimilarityScorer
 from contextlib import redirect_stdout
@@ -41,6 +40,7 @@ def test_bert():
     assert all([abs(bert_result[i] - data["bert_result"][i]) < 1e-5 for i in range(len(bert_result))])
 
 
+@pytest.mark.skipif(sys.version_info >= (3, 13), reason="bleurt not supported on Python 3.13+")
 def test_bluert_import_error():
     result = subprocess.run(["pip", "uninstall", "-y", "bleurt"], capture_output=True)
     result.check_returncode()  # Wait for subprocess to finish and check for errors
@@ -51,7 +51,8 @@ def test_bluert_import_error():
         assert "The bleurt package is required to use BLEURTScorer but is not installed. Please install it using:" in str(import_error.value)
 
 
-@unittest.skipIf((os.getenv("CI") == "true"), "Skipping test in CI due to dependency on GitHub repository.")
+@pytest.mark.skipif(sys.version_info >= (3, 13), reason="bleurt not supported on Python 3.13+")
+@pytest.mark.skipif((os.getenv("CI") == "true"), reason="Skipping test in CI due to dependency on GitHub repository.")
 def test_bluert_runtime_error(monkeypatch):
     resource_path = resources.files("uqlm.resources").joinpath("BLEURT-20")
     bluert_scorer_result = data["bluert_score"].copy()
@@ -90,6 +91,7 @@ def test_bluert_runtime_error(monkeypatch):
     assert all([abs(bluert_result[i] - data["bluert_result"][i]) < 1e-5 for i in range(len(bluert_result))])
 
 
+@pytest.mark.skipif(sys.version_info >= (3, 13), reason="bleurt not supported on Python 3.13+")
 def test_bleurt_unzip_print():
     test_path = resources.files("uqlm.resources")
 
@@ -121,6 +123,7 @@ def test_bleurt_unzip_print():
     os.remove(corrupted_zip_path) if os.path.exists(corrupted_zip_path) else None
 
 
+@pytest.mark.skipif(sys.version_info >= (3, 13), reason="bleurt not supported on Python 3.13+")
 def test_bleurt_download_print():
     test_path = resources.files("uqlm.resources")
     # Use GitHub's 404 page which will reliably return a 404 status code

@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 import math
 import numpy as np
 from langchain_core.language_models.chat_models import BaseChatModel
+from rich import print as rprint
 
 from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier, UQResult
 
@@ -46,7 +47,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.scorers = scorers if scorers else self.white_box_names
 
-    async def generate_and_score(self, prompts: List[str]) -> UQResult:
+    async def generate_and_score(self, prompts: List[str], progress_bar: Optional[bool] = True) -> UQResult:
         """
         Generate responses and compute white-box confidence scores based on extracted token probabilities.
 
@@ -54,6 +55,9 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         ----------
         prompts : list of str
             A list of input prompts for the model.
+
+        progress_bar : bool, default=True
+            If True, displays a progress bar while generating and scoring responses
 
         Returns
         -------
@@ -63,8 +67,10 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         assert hasattr(self.llm, "logprobs"), """
         BaseChatModel must have logprobs attribute and have logprobs=True
         """
+        if progress_bar:
+            rprint("🤖📈 Generation & Scoring")
         self.llm.logprobs = True
-        responses = await self.generate_original_responses(prompts)
+        responses = await self.generate_original_responses(prompts, progress_bar=progress_bar)
         return self.score(prompts=prompts, responses=responses, logprobs_results=self.logprobs)
 
     def score(self, logprobs_results: List[List[Dict[str, Any]]], prompts: Optional[List[str]] = None, responses: Optional[List[str]] = None) -> UQResult:

@@ -15,6 +15,7 @@
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from typing import Any, List, Optional
+from rich import print as rprint
 
 from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier, UQResult
 from uqlm.black_box import BertScorer, CosineScorer, MatchScorer
@@ -28,6 +29,7 @@ class BlackBoxUQ(UncertaintyQuantifier):
         device: Any = None,
         use_best: bool = True,
         nli_model_name: str = "microsoft/deberta-large-mnli",
+        sentence_transformer: str = "all-MiniLM-L6-v2",
         postprocessor: Any = None,
         system_prompt: str = "You are a helpful assistant.",
         max_calls_per_min: Optional[int] = None,
@@ -64,6 +66,11 @@ class BlackBoxUQ(UncertaintyQuantifier):
             Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
             AutoModelForSequenceClassification.from_pretrained()
 
+        sentence_transformer : str, default="all-MiniLM-L6-v2"
+            Specifies which huggingface sentence transformer to use when computing cosine similarity. See
+            https://huggingface.co/sentence-transformers?sort_models=likes#models
+            for more information. The recommended sentence transformer is 'all-MiniLM-L6-v2'.
+
         postprocessor : callable, default=None
             A user-defined function that takes a string input and returns a string. Used for postprocessing
             outputs.
@@ -96,12 +103,13 @@ class BlackBoxUQ(UncertaintyQuantifier):
         self.use_best = use_best
         self.sampling_temperature = sampling_temperature
         self.nli_model_name = nli_model_name
+        self.sentence_transformer = sentence_transformer
         self._validate_scorers(scorers)
         self.use_nli = ("semantic_negentropy" in self.scorers) or ("noncontradiction" in self.scorers)
         if self.use_nli:
             self._setup_nli(nli_model_name)
 
-    async def generate_and_score(self, prompts: List[str], num_responses: int = 5) -> UQResult:
+    async def generate_and_score(self, prompts: List[str], num_responses: int = 5, progress_bar: Optional[bool] = True) -> UQResult:
         """
         Generate LLM responses, sampled LLM (candidate) responses, and compute confidence scores with specified scorers for the provided prompts.
 
@@ -113,6 +121,9 @@ class BlackBoxUQ(UncertaintyQuantifier):
         num_responses : int, default=5
             The number of sampled responses used to compute consistency.
 
+        progress_bar : bool, default=True
+            If True, displays a progress bar while generating and scoring responses
+
         Returns
         -------
         UQResult
@@ -120,12 +131,16 @@ class BlackBoxUQ(UncertaintyQuantifier):
         """
         self.prompts = prompts
         self.num_responses = num_responses
+        self.progress_bar = progress_bar
+        if progress_bar:
+            rprint("🤖 Generation")
+        responses = await self.generate_original_responses(prompts=prompts, progress_bar=progress_bar)
+        sampled_responses = await self.generate_candidate_responses(prompts=prompts, progress_bar=progress_bar)
+        if progress_bar:
+            rprint("📈 Scoring")
+        return self.score(responses=responses, sampled_responses=sampled_responses, progress_bar=progress_bar)
 
-        responses = await self.generate_original_responses(prompts)
-        sampled_responses = await self.generate_candidate_responses(prompts)
-        return self.score(responses=responses, sampled_responses=sampled_responses)
-
-    def score(self, responses: List[str], sampled_responses: List[List[str]]) -> UQResult:
+    def score(self, responses: List[str], sampled_responses: List[List[str]], progress_bar: Optional[bool] = True) -> UQResult:
         """
         Compute confidence scores with specified scorers on provided LLM responses. Should only be used if responses and sampled responses
         are already generated. Otherwise, use `generate_and_score`.
@@ -139,20 +154,21 @@ class BlackBoxUQ(UncertaintyQuantifier):
             A list of lists of sampled LLM responses for each prompt. These will be used to compute consistency scores by comparing to
             the corresponding response from `responses`.
 
+        progress_bar : bool, default=True
+            If True, displays a progress bar while scoring responses
+
         Returns
         -------
         UQResult
             UQResult containing data (prompts, responses, and scores) and metadata
         """
-        print("Computing confidence scores...")
         self.responses = responses
         self.sampled_responses = sampled_responses
         self.num_responses = len(sampled_responses[0])
-
         self.scores_dict = {k: [] for k in self.scorer_objects}
         if self.use_nli:
             compute_entropy = "semantic_negentropy" in self.scorers
-            nli_scores = self.nli_scorer.evaluate(responses=self.responses, sampled_responses=self.sampled_responses, use_best=self.use_best, compute_entropy=compute_entropy)
+            nli_scores = self.nli_scorer.evaluate(responses=self.responses, sampled_responses=self.sampled_responses, use_best=self.use_best, compute_entropy=compute_entropy, progress_bar=progress_bar)
             if self.use_best:
                 self.original_responses = self.responses.copy()
                 self.responses = nli_scores["responses"]
@@ -161,13 +177,13 @@ class BlackBoxUQ(UncertaintyQuantifier):
             for key in ["semantic_negentropy", "noncontradiction"]:
                 if key in self.scorers:
                     if key == "semantic_negentropy":
-                        nli_scores[key] = [1 - s for s in self.nli_scorer._normalize_entropy(nli_scores[key])]  # Convert to confidence score
+                        nli_scores[key] = [1 - s for s in self.nli_scorer._normalize_entropy(nli_scores["discrete_semantic_entropy"])]  # Convert to confidence score
                     self.scores_dict[key] = nli_scores[key]
 
         # similarity scorers that follow the same pattern
         for scorer_key in ["exact_match", "bert_score", "bleurt", "cosine_sim"]:
             if scorer_key in self.scorer_objects:
-                self.scores_dict[scorer_key] = self.scorer_objects[scorer_key].evaluate(responses=self.responses, sampled_responses=self.sampled_responses)
+                self.scores_dict[scorer_key] = self.scorer_objects[scorer_key].evaluate(responses=self.responses, sampled_responses=self.sampled_responses, progress_bar=progress_bar)
 
         return self._construct_result()
 
@@ -195,7 +211,7 @@ class BlackBoxUQ(UncertaintyQuantifier):
 
                 self.scorer_objects["bleurt"] = BLEURTScorer()
             elif scorer == "cosine_sim":
-                self.scorer_objects["cosine_sim"] = CosineScorer()
+                self.scorer_objects["cosine_sim"] = CosineScorer(transformer=self.sentence_transformer)
             elif scorer in ["semantic_negentropy", "noncontradiction"]:
                 continue
             else:
