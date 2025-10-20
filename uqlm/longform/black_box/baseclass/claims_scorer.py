@@ -96,7 +96,7 @@ class ClaimScorer(ABC):
         for i, claim in enumerate(claims):
             for j, candidate in enumerate(candidates):
                 if self.matched_claim:
-                    entail_scores[i, j], noncontradict_scores[i, j], contrast_entail_scores[i, j] = self._compute_matched_nli_scores(claim=claim, candidate=candidate)
+                    entail_scores[i, j], noncontradict_scores[i, j], contrast_entail_scores[i, j] = self._compute_matched_nli_scores(claim=claim, candidate_claims=candidate)
                 else:
                     entail_scores[i, j], noncontradict_scores[i, j], contrast_entail_scores[i, j] = self._get_nli_agreement_scores(claim=claim, candidate=candidate)
         return entail_scores, noncontradict_scores, contrast_entail_scores
