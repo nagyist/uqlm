@@ -49,7 +49,6 @@ class ResponseGenerator:
         self.progress = None
         self.progress_task = None
         self.is_judge = False
-        self.top_logprobs = top_logprobs
 
     async def generate_responses(self, prompts: List[Union[str, List[BaseMessage]]], system_prompt: Optional[str] = None, count: int = 1, progress_bar: Optional[Progress] = None) -> Dict[str, Any]:
         """
@@ -99,6 +98,8 @@ class ResponseGenerator:
         """
         if any(isinstance(prompt, list) and all(isinstance(item, BaseMessage) for item in prompt) for prompt in prompts):
             beta_warning("Use of BaseMessage in prompts argument is in beta. Please use it with caution as it may change in future releases.")
+            
+        self.top_logprobs_kwarg = top_logprobs
         if self.llm.temperature == 0:
             assert count == 1, "temperature must be greater than 0 if count > 1"
         self._update_count(count)

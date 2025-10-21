@@ -36,9 +36,9 @@ Remember: Your response must be exactly one word - either "True" or "False".
 
 
 class PTrueScorer:
-    def __init__(self, llm: BaseChatModel) -> None:
+    def __init__(self, llm: BaseChatModel, max_calls_per_min: Optional[int] = None) -> None:
         llm.logprobs = True
-        self.response_generator = ResponseGenerator(llm)
+        self.response_generator = ResponseGenerator(llm, max_calls_per_min=max_calls_per_min)
     
     async def evaluate(self, prompts: List[str], responses: List[str]) -> Dict[str, float]:
         ptrue_prompts = [self._construct_ptrue_prompt(original_prompt, original_response) for original_prompt, original_response in zip(prompts, responses)]

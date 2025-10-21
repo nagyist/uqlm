@@ -18,13 +18,14 @@ import numpy as np
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 
+from uqlm.white_box import SingleGenerationScorer, MultiGenerationScorer, PTrueScorer
 from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
 from uqlm.utils.results import UQResult
 
 SINGLE_LOGPROB_SCORERS = ["normalized_probability", "min_probability", "sequence_probability", ]
 MULTI_LOGPROB_SCORERS = ["max_token_negentropy", "mean_token_negentropy", "probability_margin"]
 MULTI_GENERATION_SCORERS = ["semantic_negentropy", "semantic_density", "monte_carlo_sequence_probability", "consistency_and_confidence"]
-ALL_WHITE_BOX_SCORERS = SINGLE_LOGPROB_SCORERS + MULTI_LOGPROB_SCORERS + MULTI_GENERATION_SCORERS
+ALL_WHITE_BOX_SCORERS = SINGLE_LOGPROB_SCORERS + MULTI_LOGPROB_SCORERS + MULTI_GENERATION_SCORERS + "p_true"
 
 class WhiteBoxUQ(UncertaintyQuantifier):
     def __init__(
@@ -58,10 +59,12 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             Specifies which black box (consistency) scorers to include. If None, defaults to all.
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
+        self.single_generation_scorer = SingleGenerationScorer()
         self.top_k_logprobs = None
+        self.sampling = False
         self._validate_scorers(scorers, top_k_logprobs)
 
-    async def generate_and_score(self, prompts: List[Union[str, List[BaseMessage]]], show_progress_bars: Optional[bool] = True) -> UQResult:
+    async def generate_and_score(self, prompts: List[Union[str, List[BaseMessage]]], num_responses: Optional[int] = 5, show_progress_bars: Optional[bool] = True) -> UQResult:
         """
         Generate responses and compute white-box confidence scores based on extracted token probabilities.
 
@@ -82,19 +85,31 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         assert hasattr(self.llm, "logprobs"), """
         BaseChatModel must have logprobs attribute and have logprobs=True
         """
-        self.llm.logprobs = True
+        try: 
+            self.llm.logprobs = True
+        except ValueError:
+            pass
 
         self._construct_progress_bar(show_progress_bars)
         self._display_generation_header(show_progress_bars, white_box=True)
 
         responses = await self.generate_original_responses(prompts, progress_bar=self.progress_bar)
-        result = self.score(prompts=prompts, responses=responses, logprobs_results=self.logprobs)
+        if self.sampling:
+            sampled_responses = await self.generate_candidate_responses(prompts=prompts, num_responses=num_responses, progress_bar=self.progress_bar)
+        result = self.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=self.logprobs)
 
         self._stop_progress_bar()
         self.progress_bar = None  # if re-run ensure the same progress object is not used
         return result
 
-    def score(self, logprobs_results: List[List[Dict[str, Any]]], prompts: Optional[List[str]] = None, responses: Optional[List[str]] = None) -> UQResult:
+    def score(
+        self, 
+        logprobs_results: List[List[Dict[str, Any]]], 
+        prompts: Optional[List[str]] = None, 
+        responses: Optional[List[str]] = None,
+        sampled_responses: Optional[List[List[str]]] = None,
+        sampled_logprobs_results: Optional[List[List[List[Dict[str, Any]]]]] = None,         
+    ) -> UQResult:
         """
         Compute white-box confidence scores from provided logprobs.
 
@@ -132,40 +147,6 @@ class WhiteBoxUQ(UncertaintyQuantifier):
 
         result = {"data": data, "metadata": {"temperature": None if not self.llm else self.llm.temperature}}
         return UQResult(result)
-
-    def _compute_scores(self, logprobs_results: List[List[Dict[str, Any]]]) -> List[float]:
-        """
-        This method computes token-probability-based confidence scores.
-        """
-        return {"normalized_probability": self._compute_normalized_probability_scores(logprobs_results), "min_probability": self._compute_min_token_probability_scores(logprobs_results)}
-
-    def _compute_normalized_probability_scores(self, logprobs_results: List[List[Dict[str, Any]]]) -> List[float]:
-        """Compute normalized sequence probabilities"""
-        return [np.nan if not r else self._norm_prob(r) for r in logprobs_results]
-    
-    def _compute_min_token_probability_scores(self, logprobs_results: List[List[Dict[str, Any]]]) -> List[float]:
-        """Compute normalized sequence probabilities"""
-        return [np.nan if not r else self._min_prob(r) for r in logprobs_results]
-    
-    def _compute_sequence_probability_scores(self, logprobs_results: List[List[Dict[str, Any]]]) -> List[float]:
-        """Compute normalized sequence probabilities"""
-        return [np.nan if not r else self._seq_prob(r) for r in logprobs_results]    
-    
-    def _norm_prob(self, logprobs: List[Dict[str, Any]]) -> float:
-        """Compute length-normalized sequence probability"""
-        return math.exp(self.avg_logprob(logprobs))
-
-    def _min_prob(self, logprobs: List[Dict[str, Any]]) -> float:
-        """Compute minimum token probability"""
-        return min(self._get_probs(logprobs))
-
-    def avg_logprob(self, logprobs: List[Dict[str, Any]]) -> float:
-        "Compute average logprob"
-        return np.mean(self.get_logprobs(logprobs))
-    
-    def _seq_prob(self, logprobs: List[Dict[str, Any]]) -> float:
-        "Compute sequence probability"
-        return np.prod(self._get_probs(logprobs))
     
     def _validate_scorers(self, scorers: List[str], top_k_logprobs: int) -> None:
         """Validate and store scorer list"""
@@ -173,19 +154,13 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         for scorer in scorers:
             if scorer in ALL_WHITE_BOX_SCORERS:
                 self.scorers.append(scorer)
+            else:
+                raise ValueError(f"Invalid scorer provided: {scorer}")
         if set(MULTI_LOGPROB_SCORERS) & set(scorers):
             self.top_k_logprobs = top_k_logprobs
-            
-    def _get_top_logprobs(self, logprobs: List[Dict[str, Any]]) -> List[List[float]]: 
-        """Extract top log probabilities for single token"""
-        return [self.get_logprobs(d["top_logprobs"]) for d in logprobs]
-
-    @staticmethod
-    def _get_probs(logprobs: List[Dict[str, float]]) -> List[float]: 
-        """Extract token probabilities"""
-        return [math.exp(d["logprob"]) for d in logprobs]
-
-    @staticmethod
-    def get_logprobs(logprobs: List[Dict[str, float]]) -> List[float]: 
-        """Extract log token probabilities"""
-        return [d["logprob"] for d in logprobs]
+        if set(MULTI_GENERATION_SCORERS) & set(scorers):
+            self.sampling = True
+            self.multi_generation_scorer = MultiGenerationScorer()
+        if p_true in scorers:
+            self.p_true_scorer = PTrueScorer(llm=self.llm, max_calls_per_min=self.max_calls_per_min)
+        
