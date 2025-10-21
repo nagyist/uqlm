@@ -26,7 +26,7 @@ from uqlm.utils.warn import beta_warning
 
 
 class ResponseGenerator:
-    def __init__(self, llm: BaseChatModel = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False) -> None:
+    def __init__(self, llm: BaseChatModel = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False, top_logprobs: Optional[int] = None) -> None:
         """
         Class for generating data from a provided set of prompts
 
@@ -49,6 +49,7 @@ class ResponseGenerator:
         self.progress = None
         self.progress_task = None
         self.is_judge = False
+        self.top_logprobs = top_logprobs
 
     async def generate_responses(self, prompts: List[Union[str, List[BaseMessage]]], system_prompt: Optional[str] = None, count: int = 1, progress_bar: Optional[Progress] = None) -> Dict[str, Any]:
         """
@@ -186,7 +187,11 @@ class ResponseGenerator:
             raise ValueError("prompts must be list of strings or list of lists of BaseMessage instances. For support with LangChain BaseMessage usage, refer here: https://python.langchain.com/docs/concepts/messages")
 
         logprobs = [None] * count
-        result = await self.llm.agenerate([messages])
+        
+        if self.top_logprobs:
+            result = await self.llm.agenerate([messages], top_logprobs=self.top_logprobs)
+        else:
+            result = await self.llm.agenerate([messages])
         if self.progress_bar:
             for _ in range(count):
                 self.progress_bar.update(self.progress_task, advance=1)
