@@ -13,7 +13,8 @@
 # limitations under the License.
 
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+import numpy as np
 from langchain_core.language_models.chat_models import BaseChatModel
 from uqlm.utils.response_generator import ResponseGenerator
 
@@ -39,7 +40,7 @@ class PTrueScorer:
     def __init__(self, llm: BaseChatModel, max_calls_per_min: Optional[int] = None) -> None:
         llm.logprobs = True
         self.response_generator = ResponseGenerator(llm, max_calls_per_min=max_calls_per_min)
-    
+
     async def evaluate(self, prompts: List[str], responses: List[str]) -> Dict[str, float]:
         ptrue_prompts = [self._construct_ptrue_prompt(original_prompt, original_response) for original_prompt, original_response in zip(prompts, responses)]
         ptrue_responses = await self.response_generator.generate_responses(prompts=ptrue_prompts, system_prompt=PTRUE_SYSTEM_PROMPT)
@@ -47,10 +48,9 @@ class PTrueScorer:
         print(logprob_results)
         ptrue_scores = [self._extract_ptrue_from_logprobs_result(logprob_result) for logprob_result in logprob_results]
         return {"p_true": ptrue_scores}
-        
+
     @staticmethod
     def _extract_ptrue_from_logprobs_result(logprobs_result: List[Dict[str, Any]]) -> float:
-        
         first_token_data = logprobs_result[0]
         token = first_token_data.get("token", "").strip().lower()
         logprob = first_token_data.get("logprob", None)
@@ -62,10 +62,10 @@ class PTrueScorer:
                 return prob  # High prob means high P_true
             elif token.startswith("false"):
                 return 1.0 - prob  # High prob of False means low P_true
-            else: 
+            else:
                 return np.nan
-            
-    @staticmethod      
+
+    @staticmethod
     def _construct_ptrue_prompt(original_prompt: str, original_response: str) -> str:
         ptrue_prompt = f"""
         Question: {original_prompt}

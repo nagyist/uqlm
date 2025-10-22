@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from uqlm.white_box.single_generation import SingleGenerationScorer
-from uqlm.white_box.multi_generation import MultiGenerationScorer
+from uqlm.white_box.single_logprobs import SingleLogprobsScorer, SINGLE_LOGPROBS_SCORER_NAMES
+from uqlm.white_box.top_logprobs import TopLogprobsScorer, TOP_LOGPROBS_SCORER_NAMES
+from uqlm.white_box.sampled_logprobs import SampledLogprobsScorer, SAMPLED_LOGPROBS_SCORER_NAMES
 from uqlm.white_box.reflexive import PTrueScorer
 
-__all__ = ["SingleGenerationScorer", "MultiGenerationScorer", "PTrueScorer"]
+__all__ = ["SingleLogprobsScorer", "TopLogprobsScorer", "SampledLogprobsScorer", "PTrueScorer", "SINGLE_LOGPROBS_SCORER_NAMES", "TOP_LOGPROBS_SCORER_NAMES", "SAMPLED_LOGPROBS_SCORER_NAMES"]
