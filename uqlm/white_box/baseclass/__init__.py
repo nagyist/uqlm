@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from uqlm.white_box.baseclass.white_box_scorer import WhiteBoxScorer
+from uqlm.white_box.baseclass.logprobs_scorer import LogprobsScorer
 
-__all__ = ["WhiteBoxScorer"]
+__all__ = ["LogprobsScorer"]

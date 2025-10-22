@@ -19,15 +19,23 @@ from langchain_core.messages import BaseMessage
 from uqlm.white_box.single_logprobs import SingleLogprobsScorer, SINGLE_LOGPROBS_SCORER_NAMES
 from uqlm.white_box.top_logprobs import TopLogprobsScorer, TOP_LOGPROBS_SCORER_NAMES
 from uqlm.white_box.sampled_logprobs import SampledLogprobsScorer, SAMPLED_LOGPROBS_SCORER_NAMES
-from uqlm.white_box.reflexive import PTrueScorer
+from uqlm.white_box.p_true import PTrueScorer
 from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
 from uqlm.utils.results import UQResult
 
-ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_NAMES + SAMPLED_LOGPROBS_SCORER_NAMES + "p_true"
+ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_NAMES + SAMPLED_LOGPROBS_SCORER_NAMES + ["p_true"]
 
 
 class WhiteBoxUQ(UncertaintyQuantifier):
-    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, top_k_logprobs: int = 15) -> None:
+    def __init__(
+        self, 
+        llm: Optional[BaseChatModel] = None, 
+        system_prompt: Optional[str] = None, 
+        max_calls_per_min: Optional[int] = None, 
+        scorers: Optional[List[str]] = None, 
+        sampling_temperature: float = 1.0,
+        top_k_logprobs: int = 15
+    ) -> None:
         """
         Class for computing white-box UQ confidence scores. This class offers two confidence scores, normalized
         probability :footcite:`malinin2021uncertaintyestimationautoregressivestructured` and minimum probability :footcite:`manakul2023selfcheckgptzeroresourceblackboxhallucination`.
@@ -51,8 +59,10 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             Specifies which black box (consistency) scorers to include. If None, defaults to all.
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
+        self.sampling_temperature = sampling_temperature
         self.top_k_logprobs = top_k_logprobs
         self._validate_scorers(scorers, top_k_logprobs)
+        self.multiple_logprobs = None
 
     async def generate_and_score(self, prompts: List[Union[str, List[BaseMessage]]], num_responses: Optional[int] = 5, show_progress_bars: Optional[bool] = True) -> UQResult:
         """
@@ -76,14 +86,15 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         BaseChatModel must have logprobs attribute and have logprobs=True
         """
         self.llm.logprobs = True
+        sampled_responses = None
 
         self._construct_progress_bar(show_progress_bars)
         self._display_generation_header(show_progress_bars, white_box=True)
 
         responses = await self.generate_original_responses(prompts, progress_bar=self.progress_bar)
-        if self.multi_logprobs_scorer_names:
+        if self.sampled_logprobs_scorer_names:
             sampled_responses = await self.generate_candidate_responses(prompts=prompts, num_responses=num_responses, progress_bar=self.progress_bar)
-        result = self.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=self.logprobs, sampled_logprobs_results=self.multiple_logprobs)
+        result = await self.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=self.logprobs, sampled_logprobs_results=self.multiple_logprobs)
 
         self._stop_progress_bar()
         self.progress_bar = None  # if re-run ensure the same progress object is not used
@@ -111,17 +122,17 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         """
 
         data = {"prompts": prompts, "responses": responses, "logprobs_results": logprobs_results, "sampled_responses": sampled_responses, "sampled_logprobs_results": sampled_logprobs_results}
-        data = {key: val for key, val in data.items if val}
+        data = {key: val for key, val in data.items() if val}
 
         if self.single_logprobs_scorer_names:
-            single_logprobs_scores_dict = self.single_generation_scorer.evaluate_from_logprobs(logprobs_results)
+            single_logprobs_scores_dict = self.single_logprobs_scorer.evaluate(logprobs_results)
             data.update(single_logprobs_scores_dict)
-        if self.multi_logprobs_scorer_names:
-            multip_logprobs_scores_dict = self.single_generation_scorer.evaluate_from_top_logprobs(logprobs_results)
-            data.update(multip_logprobs_scores_dict)
-        if self.multi_generation_scorer_names:
-            multi_generation_scores_dict = self.multi_generation_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses)
-            data.update(multi_generation_scores_dict)
+        if self.top_logprobs_scorer_names:
+            top_logprobs_scores_dict = self.top_logprobs_scorer.evaluate(logprobs_results)
+            data.update(top_logprobs_scores_dict)
+        if self.sampled_logprobs_scorer_names:
+            sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses)
+            data.update(sampled_logprobs_scores_dict)
         if "p_true" in self.scorers:
             p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses)
             data.update(p_true_scores_dict)
