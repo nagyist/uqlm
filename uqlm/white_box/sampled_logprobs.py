@@ -14,31 +14,33 @@
 
 
 from typing import List, Dict, Any, Optional
+from rich.progress import Progress
 from uqlm.black_box.cosine import CosineScorer
 from uqlm.white_box.baseclass.logprobs_scorer import LogprobsScorer
 
 
 SAMPLED_LOGPROBS_SCORER_NAMES = [
     # "semantic_negentropy", "semantic_density",
-    "monte_carlo_sequence_probability",
+    "monte_carlo_negentropy",
     "consistency_and_confidence",
 ]
 
 
 class SampledLogprobsScorer(LogprobsScorer):
     def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES):
+        super().__init__()
         self.scorers = scorers
 
-    def evaluate(self, logprobs_results: List[List[Dict[str, Any]]], responses: List[str], sampled_responses: List[List[str]], sampled_logprobs_results: Optional[List[List[List[Dict[str, Any]]]]] = None):
+    def evaluate(self, logprobs_results: List[List[Dict[str, Any]]], responses: List[str], sampled_responses: List[List[str]], sampled_logprobs_results: Optional[List[List[List[Dict[str, Any]]]]] = None, progress_bar: Optional[Progress] = None):
         scores_dict = {}
-        if "monte_carlo_sequence_probability" in self.scorers:
-            scores_dict["monte_carlo_sequence_probability"] = self.compute_consistency_confidence(logprobs_results=logprobs_results, responses=responses, sampled_responses=sampled_responses)
+        if "monte_carlo_negentropy" in self.scorers:
+            scores_dict["monte_carlo_negentropy"] = self.compute_monte_carlo_sequence_entropy(logprobs_results=logprobs_results, responses=responses, sampled_responses=sampled_responses, sampled_logprobs_results=sampled_logprobs_results)
         if "consistency_and_confidence" in self.scorers:
-            scores_dict["consistency_and_confidence"] = self.compute_monte_carlo_sequence_entropy(logprobs_results=logprobs_results, responses=responses, sampled_responses=sampled_responses, sampled_logprobs_results=sampled_logprobs_results)
+            scores_dict["consistency_and_confidence"] = self.compute_consistency_confidence(logprobs_results=logprobs_results, responses=responses, sampled_responses=sampled_responses, progress_bar=progress_bar)
         return {k: scores_dict[k] for k in self.scorers}
 
-    def compute_consistency_confidence(self, logprobs_results: List[List[Dict[str, Any]]], responses: List[str], sampled_responses: List[List[str]]) -> List[float]:
-        cosine_scores = CosineScorer().evaluate(responses=responses, sampled_responses=sampled_responses)
+    def compute_consistency_confidence(self, logprobs_results: List[List[Dict[str, Any]]], responses: List[str], sampled_responses: List[List[str]], progress_bar: Optional[Progress] = None) -> List[float]:
+        cosine_scores = CosineScorer().evaluate(responses=responses, sampled_responses=sampled_responses, progress_bar=progress_bar)
         response_probs = self._compute_single_generation_scores(logprobs_results, self._norm_prob)
         cocoa_scores = [cs * rp for cs, rp in zip(cosine_scores, response_probs)]
         return cocoa_scores

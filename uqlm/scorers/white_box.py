@@ -54,9 +54,12 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             defaults to "You are a helpful assistant."
 
         scorers : subset of {
-            "normalized_probability", "min_probability", "sequence_probability", "max_token_negentropy", "mean_token_negentropy", "probability_margin"
+            "normalized_probability", "min_probability", "sequence_probability", "max_token_negentropy", "mean_token_negentropy", "probability_margin", "monte_carlo_negentropy", "consistency_and_confidence"
         }, default=None
             Specifies which black box (consistency) scorers to include. If None, defaults to all.
+            
+        sampling_temperature : float, default=1.0
+            The 'temperature' parameter for llm model to generate sampled LLM responses. Must be greater than 0.
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.sampling_temperature = sampling_temperature
@@ -73,6 +76,9 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         prompts : List[Union[str, List[BaseMessage]]]
             List of prompts from which LLM responses will be generated. Prompts in list may be strings or lists of BaseMessage. If providing
             input type List[List[BaseMessage]], refer to https://python.langchain.com/docs/concepts/messages/#langchain-messages for support.
+
+        num_responses : int, default=5
+            The number of sampled responses used to multi-generation white-box scorers. Only applies to monte_carlo_negentropy and consistency_and_confidence scorers.
 
         show_progress_bars : bool, default=True
             If True, displays a progress bar while generating and scoring responses
@@ -100,7 +106,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         self.progress_bar = None  # if re-run ensure the same progress object is not used
         return result
 
-    async def score(self, logprobs_results: List[List[Dict[str, Any]]], prompts: Optional[List[str]] = None, responses: Optional[List[str]] = None, sampled_responses: Optional[List[List[str]]] = None, sampled_logprobs_results: Optional[List[List[List[Dict[str, Any]]]]] = None) -> UQResult:
+    async def score(self, logprobs_results: List[List[Dict[str, Any]]], prompts: Optional[List[str]] = None, responses: Optional[List[str]] = None, sampled_responses: Optional[List[List[str]]] = None, sampled_logprobs_results: Optional[List[List[List[Dict[str, Any]]]]] = None, show_progress_bars: Optional[bool] = True, _display_header: bool = True) -> UQResult:
         """
         Compute white-box confidence scores from provided logprobs.
 
@@ -110,17 +116,30 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             List of dictionaries, each returned by BaseChatModel.agenerate
 
         prompts : list of str, default=None
-            A list of input prompts for the model.
+            A list of input prompts for the model. Required only for "p_true" scorer.
 
         responses : list of str, default=None
-            A list of model responses for the prompts.
+            A list of model responses for the prompts. Required for "p_true", "monte_carlo_negentropy" and "consistency_and_confidence" scorers.
+            
+        sampled_responses : list of list of str, default=None
+            A list of lists of sampled LLM responses for each prompt. These will be used to compute consistency scores by comparing to
+            the corresponding response from `responses`. Required only for "monte_carlo_negentropy" and "consistency_and_confidence" scorers.
+            
+        sampled_logprobs_results : list of lists of logprobs_result
+            List of list of dictionaries, each returned by BaseChatModel.agenerate corresponding to sampled_responses. Required only for "monte_carlo_negentropy" and "consistency_and_confidence" scorers.
+
+        show_progress_bars : bool, default=True
+            If True, displays a progress bar while scoring responses
 
         Returns
         -------
         UQResult
             UQResult containing prompts, responses, logprobs, and white-box UQ scores
         """
-
+        self._construct_progress_bar(show_progress_bars)
+        self._display_scoring_header(show_progress_bars and _display_header)
+        
+        
         data = {"prompts": prompts, "responses": responses, "logprobs_results": logprobs_results, "sampled_responses": sampled_responses, "sampled_logprobs_results": sampled_logprobs_results}
         data = {key: val for key, val in data.items() if val}
 
@@ -131,10 +150,10 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             top_logprobs_scores_dict = self.top_logprobs_scorer.evaluate(logprobs_results)
             data.update(top_logprobs_scores_dict)
         if self.sampled_logprobs_scorer_names:
-            sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses)
+            sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
             data.update(sampled_logprobs_scores_dict)
         if "p_true" in self.scorers:
-            p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses)
+            p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses, progress_bar=self.progress_bar)
             data.update(p_true_scores_dict)
         result = {"data": data, "metadata": {"temperature": None if not self.llm else self.llm.temperature}}
         return UQResult(result)

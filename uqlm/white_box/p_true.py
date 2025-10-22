@@ -15,37 +15,32 @@
 
 from typing import Any, Dict, List, Optional
 import numpy as np
+from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
 from uqlm.utils.response_generator import ResponseGenerator
 
 PTRUE_SYSTEM_PROMPT = """
-You are a highly precise fact-checking assistant specialized in evaluating the factual correctness of statements. Your task is to determine whether a given answer to a question is factually accurate.
+Your task is to determine whether a given answer to a question is correct.
 
 Guidelines for your evaluation:
-- Analyze the provided answer for factual accuracy, logical consistency, and completeness
+- Do NOT penalize phrasing differences
 - Respond with EXACTLY one word: "True" or "False"
-- Answer "True" only if the entire response is factually correct and contains no misleading information
-- Answer "False" if the response contains any factual errors, unsupported claims, or significant omissions that would mislead the user
-- Base your judgment solely on established facts, not opinions or subjective interpretations
-- If the answer contains both correct and incorrect information, respond with "False"
-- If you're uncertain about the factual accuracy, err on the side of caution and respond with "False"
+- Answer "True" if the response is correct
+- Answer "False" if the response is incorrect
 - Do not explain your reasoning or provide any additional commentary
-- Do not hedge or qualify your answer - provide only "True" or "False"
-
-Remember: Your response must be exactly one word - either "True" or "False".
 """
 
 
-class PTrueScorer:
+class PTrueScorer():
     def __init__(self, llm: BaseChatModel, max_calls_per_min: Optional[int] = None) -> None:
         llm.logprobs = True
         self.response_generator = ResponseGenerator(llm, max_calls_per_min=max_calls_per_min)
+        self.response_generator.response_generator_type = "p_true"
 
-    async def evaluate(self, prompts: List[str], responses: List[str]) -> Dict[str, float]:
+    async def evaluate(self, prompts: List[str], responses: List[str], progress_bar: Optional[Progress] = None) -> Dict[str, float]:
         ptrue_prompts = [self._construct_ptrue_prompt(original_prompt, original_response) for original_prompt, original_response in zip(prompts, responses)]
-        ptrue_responses = await self.response_generator.generate_responses(prompts=ptrue_prompts, system_prompt=PTRUE_SYSTEM_PROMPT)
+        ptrue_responses = await self.response_generator.generate_responses(prompts=ptrue_prompts, system_prompt=PTRUE_SYSTEM_PROMPT, progress_bar=progress_bar)
         logprob_results = ptrue_responses["metadata"]["logprobs"]
-        print(logprob_results)
         ptrue_scores = [self._extract_ptrue_from_logprobs_result(logprob_result) for logprob_result in logprob_results]
         return {"p_true": ptrue_scores}
 
@@ -57,7 +52,6 @@ class PTrueScorer:
 
         if logprob is not None:
             prob = np.exp(logprob)
-            # Interpret based on what token was generated
             if token.startswith("true"):
                 return prob  # High prob means high P_true
             elif token.startswith("false"):

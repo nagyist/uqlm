@@ -25,6 +25,13 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from uqlm.utils.warn import beta_warning
 
 
+generator_type_to_progress_msg = {
+    "judge": 'Scoring responses with LLM-as-a-Judge', 
+    "original": 'Generating responses',
+    "p_true": "Scoring responses with P(True)"
+}
+
+
 class ResponseGenerator:
     def __init__(self, llm: BaseChatModel = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False, top_logprobs: Optional[int] = None) -> None:
         """
@@ -48,7 +55,8 @@ class ResponseGenerator:
         self.max_calls_per_min = max_calls_per_min
         self.progress = None
         self.progress_task = None
-        self.is_judge = False
+        self.generator_type_to_progress_msg = generator_type_to_progress_msg
+        self.response_generator_type = "original"
         self.top_logprobs = None
 
     async def generate_responses(self, prompts: List[Union[str, List[BaseMessage]]], system_prompt: Optional[str] = None, count: int = 1, progress_bar: Optional[Progress] = None) -> Dict[str, Any]:
@@ -145,7 +153,7 @@ class ResponseGenerator:
         generations = {"responses": [], "logprobs": []}
         if self.progress_bar:
             if self.count == 1:
-                self.progress_task = self.progress_bar.add_task(f"  - {'Scoring responses with LLM-as-a-Judge' if self.is_judge else 'Generating responses'}...", total=len(prompts))
+                self.progress_task = self.progress_bar.add_task(f"  - {self.generator_type_to_progress_msg[self.response_generator_type]}...", total=len(prompts))
             else:
                 self.progress_task = self.progress_bar.add_task(f"  - Generating candidate responses ({self.count} per prompt)...", total=len(prompts) * self.count)
 

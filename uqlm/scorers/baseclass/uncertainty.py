@@ -258,7 +258,7 @@ class UncertaintyQuantifier:
         """Displays generation header"""
         if show_progress_bars and self.progress_bar:
             try:
-                display_text = "🤖 Generation" if not white_box else "🤖📈 Generation & Scoring"
+                display_text = "🤖 Generation" if not white_box else "🤖🧮 Generation with Logprobs"
                 self.progress_bar.add_task(display_text)
             except (AttributeError, RuntimeError, OSError):
                 # If progress bar fails, just continue without it

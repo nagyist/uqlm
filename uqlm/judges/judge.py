@@ -79,7 +79,7 @@ class LLMJudge(ResponseGenerator):
         self.keywords_to_scores_dict = keywords_to_scores_dict
         self._validate_inputs()
         self.system_prompt = self.standard_instruction if not system_prompt else system_prompt
-        self.is_judge = True
+        self.response_generator_type = "judge"
 
     async def judge_responses(self, prompts: List[str], responses: List[str], retries: int = 5, progress_bar: Optional[rich.progress.Progress] = None, explanations: bool = False) -> Dict[str, Any]:
         """
