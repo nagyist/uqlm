@@ -26,8 +26,8 @@ class ClaimQAScorer:
         sampling_temperature: float = 1.0,
         max_calls_per_min: int = 1000,
         use_n_param: bool = False,
-        num_questions: int = 2,
-        num_claim_qa_responses: int = 2,
+        num_questions: int = 1,
+        num_claim_qa_responses: int = 5,
     ):
         """
         Initialize the ClaimQAScorer.
@@ -129,7 +129,6 @@ class ClaimQAScorer:
         # if progress_bar:
         #     progress_task = progress_bar.add_task("  - Decomposing responses into factoids...", total=len(responses))
 
-        # TODO: Appropriately implement self.num_factoids to generate the number of claims/factoids
         decomposer = ResponseDecomposer(claim_decomposition_llm=self.llm_decomposer, response_template=self.response_template)
         
         tasks = [decomposer.decompose_claims(responses=[response], progress_bar=progress_bar) for response in responses]
@@ -145,7 +144,7 @@ class ClaimQAScorer:
         Parameters
         ----------
         original_prompt : str
-            The original prompt to be scored.
+            The original prompt.
         original_response : str
             The original response to be scored.
         factoids : List[str]
@@ -156,37 +155,36 @@ class ClaimQAScorer:
         List[float]
             A dictionary of ClaimQA scores for the given set of factoids.
         """
-        factoid_scores = {key: [] for key in self.bb_object.scorers}
-        factoid_questions, factoid_questions_responses, factoid_questions_sampled_responses = [], [], []
-        # print("Factoids for ith response: ", factoids)
-        # print(" ")
-        for factoid_i in factoids:
-            # Generate questions on each factoid
-            create_question_prompt = get_question_template(original_response, factoid_i, self.num_questions)
-            # print("Prompt: ", create_question_prompt)
-            # print(" ")
-            claim_questions_result = await self._generate_responses(llm=self.llm_questioner, prompts=[create_question_prompt])
-            claim_questions = re.split(r"### ", claim_questions_result["responses"][0])[1:]
-            # print("Questions: ", claim_questions)
-            # print(" ")
-            final_questions = [get_answer_template(original_question=original_prompt, original_response=original_response, claim_question=claim_question) for claim_question in claim_questions]
-            # print("Final questions: ", final_questions)
-            # print(" ")
-            if len(final_questions) == 0:
-                # print("No questions generated for factoid: ", factoid_i, " -- returning nan")
-                for key in factoid_scores:
-                    factoid_scores[key].append(np.nan)
-                continue
+        
+        # Generate questions on each factoid
+        prompt_to_generate_questions = [get_question_template(original_response, factoid, self.num_questions) for factoid in factoids]
+        generated_questions = await self._generate_responses(llm=self.llm_questioner, prompts=prompt_to_generate_questions)
+        print("Generated questions: ", generated_questions["responses"])
+        
+        # Extract questions and created a flattened list of questions
+        factoid_questions = []
+        for i in range(len(factoids)):
+            claim_questions = re.split(r"### ", generated_questions["responses"][i])[1:]
+            print(i+1, ". Claim questions: ", claim_questions)
+            factoid_questions += [get_answer_template(original_question=original_prompt, original_response=original_response, claim_question=claim_question) for claim_question in claim_questions]
+        print("Number of factoid questions: ", len(factoid_questions))
 
-            # Generate and score answers on each question
-            bb_result = await self.bb_object.generate_and_score(prompts=final_questions, num_responses=self.num_claim_qa_responses, show_progress_bars=False)
-            factoid_questions.append(final_questions)
-            factoid_questions_responses.append(bb_result.to_dict()["data"]["responses"])
-            factoid_questions_sampled_responses.append(bb_result.to_dict()["data"]["sampled_responses"])
-            for key in factoid_scores:
-                factoid_scores[key].append(np.mean(bb_result.to_dict()["data"][key]))
+        # Generate responses for all questions from all factoids of ith original response
+        bb_result = await self.bb_object.generate_and_score(prompts=factoid_questions, num_responses=self.num_claim_qa_responses, show_progress_bars=False)
+
+        # Convert results from flattened list to 2d list for each factoid
+        factoid_questions_responses = [bb_result.to_dict()["data"]["responses"][i:i + self.num_claim_qa_responses] for i in range(0, len(bb_result.to_dict()["data"]["responses"]), self.num_claim_qa_responses)]
+        factoid_questions_sampled_responses = [bb_result.to_dict()["data"]["sampled_responses"][i:i + self.num_claim_qa_responses] for i in range(0, len(bb_result.to_dict()["data"]["sampled_responses"]), self.num_claim_qa_responses)]
+        print("Factoid questions responses: ", factoid_questions_responses)
+        print("Factoid questions sampled responses: ", factoid_questions_sampled_responses)
+
+        # Compute scores for each factoid
+        factoid_scores = dict()
+        for key in self.bb_object.scorers:
+            factoid_scores[key] = [np.mean(bb_result.to_dict()["data"][key][i:i + self.num_questions]) for i in range(0, len(bb_result.to_dict()["data"][key]), self.num_questions)]
+        print("Factoid scores: ", factoid_scores)
+
         return {"factoid_scores": factoid_scores, "factoid_questions": factoid_questions, "factoid_questions_responses": factoid_questions_responses, "factoid_questions_sampled_responses": factoid_questions_sampled_responses}
-        # return {key: np.mean(factoid_scores[key]) for key in factoid_scores}
 
     async def _generate_responses(self, llm, prompts: List[str], count: int = 1, progress_bar: Optional[Progress] = None) -> List[str]:
         """Helper function to generate responses with LLM.
