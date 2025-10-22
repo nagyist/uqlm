@@ -79,9 +79,7 @@ def plot_model_accuracies(scores: ArrayLike, correct_indicators: ArrayLike, thre
     max_acc = np.nanmax(accuracies)
 
     # Create figure with two subplots sharing x-axis
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True, 
-                                     gridspec_kw={'height_ratios': [2, 1]},
-                                     constrained_layout=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True, gridspec_kw={"height_ratios": [2, 1]}, constrained_layout=True)
 
     # Top plot: Accuracy
     ax1.scatter(thresholds, accuracies, s=15, marker="s", label="Accuracy", color="blue")
@@ -89,25 +87,25 @@ def plot_model_accuracies(scores: ArrayLike, correct_indicators: ArrayLike, thre
     ax1.set_ylim([min_acc * (1 - axis_buffer), max_acc * (1 + axis_buffer)])
     ax1.set_ylabel("LLM Accuracy (Filtered)")
     ax1.set_title(f"{title}", fontsize=10)
-    ax1.legend(loc='best')
+    ax1.legend(loc="best")
     ax1.grid(True, alpha=0.3)
 
     # Bottom plot: Sample sizes
     label = "Sample Size (%)" if display_percentage else "Sample Size"
     ax2.bar(thresholds, sample_sizes, alpha=0.6, width=bar_width, label=label, color="lightblue", edgecolor="blue")
-    
+
     # Add value labels on bars
     for i, (x, y) in enumerate(zip(thresholds, sample_sizes)):
         if not np.isnan(y) and y > 0:
             label_text = f"{y:.0f}%" if display_percentage else f"{y:.0f}"
-            ax2.text(x, y, label_text, ha='center', va='bottom', fontsize=8)
-    
+            ax2.text(x, y, label_text, ha="center", va="bottom", fontsize=8)
+
     ax2.set_xlabel("Thresholds")
     ax2.set_ylabel(label)
     ax2.set_xlim([-0.04, 0.95])
     ax2.set_xticks(np.arange(0, 1, 0.1))
-    ax2.legend(loc='best')
-    ax2.grid(True, alpha=0.3, axis='y')
+    ax2.legend(loc="best")
+    ax2.grid(True, alpha=0.3, axis="y")
     if write_path:
         plt.savefig(f"{write_path}", dpi=300)
     plt.show()
