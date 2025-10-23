@@ -229,7 +229,7 @@ class UncertaintyQuantifier:
                 self.progress_bar = Progress(ConditionalSpinnerColumn(), TextColumn("[progress.description]{task.description}"), ConditionalBarColumn(), ConditionalTextColumn(completion_text), ConditionalTimeElapsedColumn())
                 self.progress_bar.start()
         except LiveError:
-            print(f"Could not create progress bar")
+            print("Could not create progress bar")
             self.progress_bar = None
             pass
 

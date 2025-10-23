@@ -183,6 +183,7 @@ def plot_filtered_accuracy(uq_result: UQResult, correct_indicators: ArrayLike, s
         plt.savefig(f"{write_path}", dpi=300)
     plt.show()
 
+
 def plot_ranked_auc(uq_result: UQResult, correct_indicators: ArrayLike, scorers_names: List[str] = None, write_path: Optional[str] = None, title: str = "Hallucination Detection: Scorer-specific AUROC", fontsize: int = 10, fontname: str = None, metric_type="auroc", baseline: float = 0.5):
     """
     Plot the ranked bar plot for hallucination detection AUROC/AUPRC of the given scorers.
@@ -215,7 +216,7 @@ def plot_ranked_auc(uq_result: UQResult, correct_indicators: ArrayLike, scorers_
        - "auroc": Plot only AUROC scores (Area Under ROC Curve)
        - "auprc": Plot only AUPRC scores (Area Under Precision-Recall Curve)
        - "both": Plot both AUROC and AUPRC side by side in subplots
-       
+
     baseline: float, default=0.5
         The baseline value to show as a dotted line (typically 0.5 for AUROC)
 
@@ -315,11 +316,10 @@ def _plot_single_metric(ax, scores, bar_colors, metric_name, fontsize, fontname,
         else:
             c = bar_colors[3]
         ax.barh(sorted_cols[i], sorted_values[i], color=c)
-    
+
     # Add baseline dotted line
-    ax.axvline(x=baseline, color='black', linestyle='--', linewidth=1.5, 
-               label=f'Baseline ({baseline})')
-    
+    ax.axvline(x=baseline, color="black", linestyle="--", linewidth=1.5, label=f"Baseline ({baseline})")
+
     legend_elements = []
     legend_labels = []
     # Check which categories are present and add to legend
@@ -335,15 +335,15 @@ def _plot_single_metric(ax, scores, bar_colors, metric_name, fontsize, fontname,
     if any(col in scores.get("Ensemble", {}) for col in sorted_cols):
         legend_elements.append(Rectangle((0, 0), 1, 1, facecolor=bar_colors[3]))
         legend_labels.append("Ensemble")
-    
+
     # Add baseline to legend
-    legend_elements.append(plt.Line2D([0], [0], color='black', linestyle='--', linewidth=1.5))
-    legend_labels.append(f'Baseline ({baseline})')
-    
+    legend_elements.append(plt.Line2D([0], [0], color="black", linestyle="--", linewidth=1.5))
+    legend_labels.append(f"Baseline ({baseline})")
+
     # Add legend if there are multiple categories
     if len(legend_elements) > 1:
         ax.legend(legend_elements, legend_labels, loc="lower right", fontsize=fontsize - 2)
-    
+
     ax.set_xlim(sorted_values[0] - 0.2, sorted_values[-1] + 0.04)
     ax.tick_params(axis="x", labelsize=fontsize - 3)
     ax.tick_params(axis="y", labelsize=fontsize - 3)
