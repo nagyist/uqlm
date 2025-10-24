@@ -112,7 +112,7 @@ results.to_df()
 Again, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used in place of `ChatVertexAI`. For a more detailed demo, refer to our [White-Box UQ Demo](./examples/white_box_demo.ipynb).
 
 
-**Single-Generation Scorers (fast/cheap):**
+**Single-Generation Scorers (minimal latency, zero extra cost):**
 
 *   Minimum token probability ([Manakul et al., 2023](https://arxiv.org/abs/2303.08896))
 *   Length-Normalized Sequence Probability ([Malinin & Gales, 2021](https://arxiv.org/pdf/2002.07650))
@@ -121,7 +121,11 @@ Again, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/cha
 *   Min Top-K Token Negentropy ([Scalena et al., 2025](https://arxiv.org/abs/2510.11170); [Manakul et al., 2023](https://arxiv.org/abs/2303.08896))
 *   Probability Margin ([Farr et al., 2024](https://arxiv.org/abs/2408.08217))
 
-**Multi-Generation Scorers:**
+**Self-Reflection Scorers (one additional generation per response):**
+
+*   P(True) ([Kadavath et al., 2022](https://arxiv.org/abs/2207.05221))
+
+**Multi-Generation Scorers (several additional generations per response):**
 
 *   Monte carlo sequence probability ([Kuhn et al., 2023](https://arxiv.org/abs/2302.09664))
 *   Consistency and Confidence (CoCoA) ([Vashurin et al., 2025](https://arxiv.org/abs/2502.04964))
