@@ -33,7 +33,7 @@ generator_type_to_progress_msg = {
 
 
 class ResponseGenerator:
-    def __init__(self, llm: BaseChatModel = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False, top_logprobs: Optional[int] = None) -> None:
+    def __init__(self, llm: BaseChatModel = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False, top_k_logprobs: Optional[int] = None) -> None:
         """
         Class for generating data from a provided set of prompts
 
@@ -57,7 +57,7 @@ class ResponseGenerator:
         self.progress_task = None
         self.generator_type_to_progress_msg = generator_type_to_progress_msg
         self.response_generator_type = "original"
-        self.top_logprobs = None
+        self.top_k_logprobs = top_k_logprobs
 
     async def generate_responses(self, prompts: List[Union[str, List[BaseMessage]]], system_prompt: Optional[str] = None, count: int = 1, progress_bar: Optional[Progress] = None) -> Dict[str, Any]:
         """
@@ -107,8 +107,7 @@ class ResponseGenerator:
         """
         if any(isinstance(prompt, list) and all(isinstance(item, BaseMessage) for item in prompt) for prompt in prompts):
             beta_warning("Use of BaseMessage in prompts argument is in beta. Please use it with caution as it may change in future releases.")
-
-        # self.top_logprobs_kwarg = top_logprobs
+    
         if self.llm.temperature == 0:
             assert count == 1, "temperature must be greater than 0 if count > 1"
         self._update_count(count)
@@ -196,29 +195,54 @@ class ResponseGenerator:
         else:
             raise ValueError("prompts must be list of strings or list of lists of BaseMessage instances. For support with LangChain BaseMessage usage, refer here: https://python.langchain.com/docs/concepts/messages")
 
-        logprobs = [None] * count
-
-        if self.top_logprobs:
-            result = await self.llm.agenerate([messages], top_logprobs=self.top_logprobs)
-        else:
+        if not self.top_k_logprobs:
             result = await self.llm.agenerate([messages])
+            logprobs = [None] * count
+            if hasattr(self.llm, "logprobs"):
+                if self.llm.logprobs:
+                    logprobs = self._extract_logprobs(logprobs=logprobs, result=result, count=count)
+            result_dict = {"logprobs": logprobs, "responses": [result.generations[0][i].text for i in range(count)]}
+        else:
+            result_dict =  await self.agenerate_with_top_logprobs(messages, count=count)    
         if self.progress_bar:
             for _ in range(count):
                 self.progress_bar.update(self.progress_task, advance=1)
-        if hasattr(self.llm, "logprobs"):
-            if self.llm.logprobs:
-                for i in range(count):
-                    if "logprobs_result" in result.generations[0][i].generation_info:
-                        logprobs[i] = result.generations[0][i].generation_info["logprobs_result"]
-
-                    elif "logprobs" in result.generations[0][i].generation_info:
-                        if "content" in result.generations[0][i].generation_info["logprobs"]:
-                            logprobs[i] = result.generations[0][i].generation_info["logprobs"]["content"]
-                    else:
-                        warnings.warn("Model did not provide logprobs in API response. White-box scores for this response may be set to np.nan.")
-                        logprobs[i] = np.nan
+        return result_dict  
+            
+    async def agenerate_with_top_logprobs(self, messages: List[BaseMessage], count: int) -> Any:
+        """Use agenerate method with top_logprobs configured"""
+        logprobs = [None] * count
+        if "openai" in self.llm.__str__().lower():
+            result = await self.llm.agenerate([messages], logprobs=True, top_logprobs=self.top_k_logprobs)
+        elif "google" in self.llm.__str__().lower() or "gemini" in self.llm.str().lower():
+            self.llm.logprobs = self.top_k_logprobs
+            result = await self.llm.agenerate([messages])  
+        else:
+            try:
+                result = await self.llm.agenerate([messages], logprobs=True, top_logprobs=self.top_k_logprobs)
+            except Exception:
+                try: 
+                    self.llm.logprobs = self.top_k_logprobs
+                    result = await self.llm.agenerate([messages]) 
+                except Exception:
+                    pass
+        logprobs = self._extract_logprobs(logprobs=logprobs, result=result, count=count)
         return {"logprobs": logprobs, "responses": [result.generations[0][i].text for i in range(count)]}
+    
+    @staticmethod
+    def _extract_logprobs(logprobs: Any, result: Any, count: int):
+        for i in range(count):
+            if "logprobs_result" in result.generations[0][i].generation_info:
+                logprobs[i] = result.generations[0][i].generation_info["logprobs_result"]
 
+            elif "logprobs" in result.generations[0][i].generation_info:
+                if "content" in result.generations[0][i].generation_info["logprobs"]:
+                    logprobs[i] = result.generations[0][i].generation_info["logprobs"]["content"]
+            else:
+                warnings.warn("Model did not provide logprobs in API response. White-box scores for this response may be set to np.nan.")
+                logprobs[i] = np.nan
+            return logprobs
+    
     @staticmethod
     def _enforce_strings(texts: List[Any]) -> List[str]:
         """Enforce that all outputs are strings"""

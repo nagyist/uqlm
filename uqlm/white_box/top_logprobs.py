@@ -18,7 +18,7 @@ from typing import List, Dict, Any
 from uqlm.white_box.baseclass.logprobs_scorer import LogprobsScorer
 
 
-TOP_LOGPROBS_SCORER_NAMES = ["max_token_negentropy", "mean_token_negentropy", "probability_margin"]
+TOP_LOGPROBS_SCORER_NAMES = ["min_token_negentropy", "mean_token_negentropy", "probability_margin"]
 
 
 class TopLogprobsScorer(LogprobsScorer):
@@ -60,9 +60,13 @@ class TopLogprobsScorer(LogprobsScorer):
         """Compute mean probability margin (difference between top two probabilities)"""
         top_logprobs_list = self.extract_top_logprobs(single_response_logprobs)
         margins = []
-        for top_logprobs in top_logprobs_list:
-            probs = np.exp(top_logprobs)
-            probs = np.sort(probs)[::-1]
-            margin = probs[0] - probs[1]
-            margins.append(margin)
-        return np.mean(margins)
+        try:
+            for top_logprobs in top_logprobs_list:
+                probs = np.exp(top_logprobs)
+                probs = np.sort(probs)[::-1]
+                margin = probs[0] - probs[1]
+                margins.append(margin)
+            return np.mean(margins)
+        except IndexError:
+            print("top_logprobs were not available. Unable to compute associated scores.")
+            return np.nan
