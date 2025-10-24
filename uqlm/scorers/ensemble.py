@@ -65,7 +65,7 @@ class UQEnsemble(UncertaintyQuantifier):
         scorers : List containing instances of BaseChatModel, LLMJudge, black-box scorer names from ['semantic_negentropy', 'noncontradiction','exact_match', 'bert_score', 'cosine_sim'], or white-box scorer names from ["normalized_probability", "min_probability"] default=None
             Specifies which UQ components to include. If None, defaults to the off-the-shelf BS Detector ensemble by
             Chen and Mueller (2023) :footcite:`chen2023quantifyinguncertaintyanswerslanguage` which uses components
-            ["noncontradiction", "exact_match","self_reflection"] with respective weights of [0.56, 0.14, 0.3]
+            ["noncontradiction", "exact_match", llm] with respective weights of [0.56, 0.14, 0.3]
 
         device : str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'noncontradiction'
@@ -237,7 +237,7 @@ class UQEnsemble(UncertaintyQuantifier):
                 self._update_best(black_box_results.data["responses"])
 
         if self.white_box_components:
-            white_box_results = self.white_box_object.score(logprobs_results=self.logprobs)
+            white_box_results = await self.white_box_object.score(logprobs_results=self.logprobs, show_progress_bars=False)
 
         if self.judges:
             self._start_progress_bar()

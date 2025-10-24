@@ -70,6 +70,7 @@ class LLMJudge(ResponseGenerator):
         self.scoring_template = scoring_template
         self.keywords_to_scores_dict = keywords_to_scores_dict
         self._validate_inputs()
+        self.response_generator_type = "judge"
         self.system_prompt = additional_context
         self.is_judge = True
 
