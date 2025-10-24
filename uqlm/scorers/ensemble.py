@@ -237,7 +237,7 @@ class UQEnsemble(UncertaintyQuantifier):
                 self._update_best(black_box_results.data["responses"])
 
         if self.white_box_components:
-            white_box_results = await self.white_box_object.score(logprobs_results=self.logprobs)
+            white_box_results = await self.white_box_object.score(logprobs_results=self.logprobs, show_progress_bars=False)
 
         if self.judges:
             self._start_progress_bar()
