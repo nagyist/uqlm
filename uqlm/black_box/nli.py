@@ -307,3 +307,35 @@ class NLIScorer(SimilarityScorer):
             return sorted(responses, key=lambda x: (x != mode_str, x))
         else:
             return sorted(responses, key=len, reverse=True)
+
+    def _semantic_density_process(self, prompt: str, original_response: str, candidates: List[str], i: int = None, logprobs_results: List[List[Dict[str, Any]]] = None) -> Any:
+        """
+        Executes complete process for semantic density and returns SD score, and dictionary
+        of NLI scores for response pairs
+        """
+        if self.verbose and i is not None:
+            print("Question No. - ", i + 1)
+
+        # Get the length-normalized tokenwise probability for each candidate response
+        tokenprob_response_probabilities, _ = self._compute_response_probabilities(logprobs_results=logprobs_results, num_responses=len(candidates))
+
+        # Compute entailment of each candidate response by the original response,
+        # conditioned on prompt
+        nli_inputs = [(f"{prompt}\n{original_response}", f"{prompt}\n{candidate}") for candidate in candidates]
+        nli_scores = [self.predict(*input) for input in nli_inputs]
+
+        # Use NLI model to estimate semantic distance between each candidate response
+        # and the original response
+        contradiction_index, neutral_index = (self.label_mapping.index("contradiction"), self.label_mapping.index("neutral"))
+
+        semantic_distance_expectation = np.array([nli_score[0, contradiction_index] + nli_score[0, neutral_index] * (np.sqrt(2) / 2) for nli_score in nli_scores])
+        semantic_squared_distance_expectation = np.array([nli_score[0, contradiction_index] + nli_score[0, neutral_index] / 2 for nli_score in nli_scores])
+
+        # Evaluate the kernel function for each candidate response
+        indicator = semantic_distance_expectation <= 1
+        kernel_values = (1 - semantic_squared_distance_expectation) * indicator
+
+        # Calculate final semantic density score
+        semantic_density = np.average(kernel_values, weights=tokenprob_response_probabilities)
+
+        return (semantic_density, nli_scores)
