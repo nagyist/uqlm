@@ -157,15 +157,15 @@ class WhiteBoxUQ(UncertaintyQuantifier):
 
     def _validate_scorers(self, scorers: List[str], top_k_logprobs: int) -> None:
         """Validate and store scorer list"""
-        self.scorers = self.white_box_names if not scorers else []
-        for scorer in scorers:
+        self.scorers = self.white_box_names if not scorers else scorers
+        for scorer in self.scorers:
             if scorer in ALL_WHITE_BOX_SCORER_NAMES:
                 self.scorers.append(scorer)
             else:
                 raise ValueError(f"Invalid scorer provided: {scorer}")
-        self.single_logprobs_scorer_names = list(set(SINGLE_LOGPROBS_SCORER_NAMES) & set(scorers))
-        self.top_logprobs_scorer_names = list(set(TOP_LOGPROBS_SCORER_NAMES) & set(scorers))
-        self.sampled_logprobs_scorer_names = list(set(SAMPLED_LOGPROBS_SCORER_NAMES) & set(scorers))
+        self.single_logprobs_scorer_names = list(set(SINGLE_LOGPROBS_SCORER_NAMES) & set(self.scorers))
+        self.top_logprobs_scorer_names = list(set(TOP_LOGPROBS_SCORER_NAMES) & set(self.scorers))
+        self.sampled_logprobs_scorer_names = list(set(SAMPLED_LOGPROBS_SCORER_NAMES) & set(self.scorers))
         if self.single_logprobs_scorer_names:
             self.single_logprobs_scorer = SingleLogprobsScorer(scorers=self.single_logprobs_scorer_names)
         if self.top_logprobs_scorer_names:
