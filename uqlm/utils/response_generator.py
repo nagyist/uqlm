@@ -25,11 +25,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from uqlm.utils.warn import beta_warning
 
 
-generator_type_to_progress_msg = {
-    "judge": 'Scoring responses with LLM-as-a-Judge', 
-    "original": 'Generating responses',
-    "p_true": "Scoring responses with P(True)"
-}
+generator_type_to_progress_msg = {"judge": "Scoring responses with LLM-as-a-Judge", "original": "Generating responses", "p_true": "Scoring responses with P(True)"}
 
 
 class ResponseGenerator:
@@ -107,7 +103,7 @@ class ResponseGenerator:
         """
         if any(isinstance(prompt, list) and all(isinstance(item, BaseMessage) for item in prompt) for prompt in prompts):
             beta_warning("Use of BaseMessage in prompts argument is in beta. Please use it with caution as it may change in future releases.")
-    
+
         if self.llm.temperature == 0:
             assert count == 1, "temperature must be greater than 0 if count > 1"
         self._update_count(count)
@@ -203,12 +199,12 @@ class ResponseGenerator:
                     logprobs = self._extract_logprobs(logprobs=logprobs, result=result, count=count)
             result_dict = {"logprobs": logprobs, "responses": [result.generations[0][i].text for i in range(count)]}
         else:
-            result_dict =  await self.agenerate_with_top_logprobs(messages, count=count)    
+            result_dict = await self.agenerate_with_top_logprobs(messages, count=count)
         if self.progress_bar:
             for _ in range(count):
                 self.progress_bar.update(self.progress_task, advance=1)
-        return result_dict  
-            
+        return result_dict
+
     async def agenerate_with_top_logprobs(self, messages: List[BaseMessage], count: int) -> Any:
         """Use agenerate method with top_logprobs configured"""
         logprobs = [None] * count
@@ -216,19 +212,19 @@ class ResponseGenerator:
             result = await self.llm.agenerate([messages], logprobs=True, top_logprobs=self.top_k_logprobs)
         elif "google" in self.llm.__str__().lower() or "gemini" in self.llm.str().lower():
             self.llm.logprobs = self.top_k_logprobs
-            result = await self.llm.agenerate([messages])  
+            result = await self.llm.agenerate([messages])
         else:
             try:
                 result = await self.llm.agenerate([messages], logprobs=True, top_logprobs=self.top_k_logprobs)
             except Exception:
-                try: 
+                try:
                     self.llm.logprobs = self.top_k_logprobs
-                    result = await self.llm.agenerate([messages]) 
+                    result = await self.llm.agenerate([messages])
                 except Exception:
                     pass
         logprobs = self._extract_logprobs(logprobs=logprobs, result=result, count=count)
         return {"logprobs": logprobs, "responses": [result.generations[0][i].text for i in range(count)]}
-    
+
     @staticmethod
     def _extract_logprobs(logprobs: Any, result: Any, count: int):
         for i in range(count):
@@ -242,7 +238,7 @@ class ResponseGenerator:
                 warnings.warn("Model did not provide logprobs in API response. White-box scores for this response may be set to np.nan.")
                 logprobs[i] = np.nan
             return logprobs
-    
+
     @staticmethod
     def _enforce_strings(texts: List[Any]) -> List[str]:
         """Enforce that all outputs are strings"""

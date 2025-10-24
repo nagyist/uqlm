@@ -31,7 +31,7 @@ Guidelines for your evaluation:
 """
 
 
-class PTrueScorer():
+class PTrueScorer:
     def __init__(self, llm: BaseChatModel, max_calls_per_min: Optional[int] = None) -> None:
         llm.logprobs = True
         self.response_generator = ResponseGenerator(llm, max_calls_per_min=max_calls_per_min)

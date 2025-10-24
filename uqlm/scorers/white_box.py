@@ -28,16 +28,7 @@ ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_
 
 
 class WhiteBoxUQ(UncertaintyQuantifier):
-    def __init__(
-        self, 
-        llm: Optional[BaseChatModel] = None, 
-        system_prompt: Optional[str] = None, 
-        max_calls_per_min: Optional[int] = None, 
-        scorers: Optional[List[str]] = None, 
-        sampling_temperature: float = 1.0,
-        top_k_logprobs: int = 15,
-        use_n_param: bool = False,
-    ) -> None:
+    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False) -> None:
         """
         Class for computing white-box UQ confidence scores. This class offers two confidence scores, normalized
         probability :footcite:`malinin2021uncertaintyestimationautoregressivestructured` and minimum probability :footcite:`manakul2023selfcheckgptzeroresourceblackboxhallucination`.
@@ -59,17 +50,17 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             "normalized_probability", "min_probability", "sequence_probability", "max_token_negentropy", "mean_token_negentropy", "probability_margin", "monte_carlo_negentropy", "consistency_and_confidence"
         }, default=None
             Specifies which black box (consistency) scorers to include. If None, defaults to all.
-            
+
         sampling_temperature : float, default=1.0
             The 'temperature' parameter for llm model to generate sampled LLM responses. Must be greater than 0.
-            
+
         use_n_param : bool, default=False
             Specifies whether to use `n` parameter for `BaseChatModel`. Not compatible with all
             `BaseChatModel` classes. If used, it speeds up the generation process substantially when num_responses > 1.
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.sampling_temperature = sampling_temperature
-        self.top_k_logprobs = None # used only if top_logprobs scorers used
+        self.top_k_logprobs = None  # used only if top_logprobs scorers used
         self._validate_scorers(scorers, top_k_logprobs)
         self.multiple_logprobs = None
 
@@ -102,10 +93,10 @@ class WhiteBoxUQ(UncertaintyQuantifier):
 
         self._construct_progress_bar(show_progress_bars)
         self._display_generation_header(show_progress_bars, white_box=True)
-        
+
         responses = await self.generate_original_responses(prompts, top_k_logprobs=self.top_k_logprobs, progress_bar=self.progress_bar)
         if self.sampled_logprobs_scorer_names:
-            self.llm.logprobs = True # reset attribute to True
+            self.llm.logprobs = True  # reset attribute to True
             sampled_responses = await self.generate_candidate_responses(prompts=prompts, num_responses=num_responses, progress_bar=self.progress_bar)
         result = await self.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=self.logprobs, sampled_logprobs_results=self.multiple_logprobs)
 
@@ -127,11 +118,11 @@ class WhiteBoxUQ(UncertaintyQuantifier):
 
         responses : list of str, default=None
             A list of model responses for the prompts. Required for "p_true", "monte_carlo_negentropy" and "consistency_and_confidence" scorers.
-            
+
         sampled_responses : list of list of str, default=None
             A list of lists of sampled LLM responses for each prompt. These will be used to compute consistency scores by comparing to
             the corresponding response from `responses`. Required only for "monte_carlo_negentropy" and "consistency_and_confidence" scorers.
-            
+
         sampled_logprobs_results : list of lists of logprobs_result
             List of list of dictionaries, each returned by BaseChatModel.agenerate corresponding to sampled_responses. Required only for "monte_carlo_negentropy" and "consistency_and_confidence" scorers.
 
@@ -145,8 +136,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         """
         self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars and _display_header)
-        
-        
+
         data = {"prompts": prompts, "responses": responses, "logprobs_results": logprobs_results, "sampled_responses": sampled_responses, "sampled_logprobs_results": sampled_logprobs_results}
         data = {key: val for key, val in data.items() if val}
 

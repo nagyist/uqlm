@@ -47,12 +47,9 @@ class SampledLogprobsScorer(LogprobsScorer):
         return cocoa_scores
 
     def monte_carlo_probability(self, logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]], responses: List[str], sampled_responses: List[List[str]]) -> List[float]:
-        num_responses = len(sampled_responses[0]) + 1
         monte_carlo_scores = []
         for i in range(len(responses)):
             all_logprobs_response_i = [logprobs_results[i]] + sampled_logprobs_results[i]
-            all_responses_i = [responses[i]] + sampled_responses[i]
-
             all_sampled_sequence_probs_response_i = self._compute_single_generation_scores(all_logprobs_response_i, self._norm_prob)
             monte_carlo_sequence_prob_i = np.mean(all_sampled_sequence_probs_response_i)
             monte_carlo_scores.append(monte_carlo_sequence_prob_i)
