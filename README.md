@@ -32,8 +32,8 @@ UQLM provides a suite of response-level scorers for quantifying the uncertainty 
 | Scorer Type            | Added Latency                                      | Added Cost                               | Compatibility                                             | Off-the-Shelf / Effort                                  |
 |------------------------|----------------------------------------------------|------------------------------------------|-----------------------------------------------------------|---------------------------------------------------------|
 | [Black-Box Scorers](#black-box-scorers-consistency-based)      | ⏱️ Medium-High (multiple generations & comparisons)           | 💸 High (multiple LLM calls)             | 🌍 Universal (works with any LLM)                         | ✅ Off-the-shelf |
-| [White-Box Scorers](#white-box-scorers-token-probability-based)      | ⚡ Minimal (token probabilities already returned)   | ✔️ None (no extra LLM calls)             | 🔒 Limited (requires access to token probabilities)       | ✅ Off-the-shelf            |
-| [LLM-as-a-Judge Scorers](#llm-as-a-judge-scorers) | ⏳ Low-Medium (additional judge calls add latency)    | 💵 Low-High (depends on number of judges)| 🌍 Universal (any LLM can serve as judge)                     |✅  Off-the-shelf        |
+| [White-Box Scorers](#white-box-scorers-token-probability-based)      | ⚡ Minimal (single-generation scorers) - ⏱️ High (multi-generation scorers)   | ✔️ None (single-generation scorers) - 💸 High (multi-generation scorers)             | 🔒 Limited (requires access to token probabilities)       | ✅ Off-the-shelf            |
+| [LLM-as-a-Judge Scorers](#llm-as-a-judge-scorers) | ⏳ Low-Medium (additional judge calls add latency)    | 💵 Low-High (depends on selected judges)| 🌍 Universal (any LLM can serve as judge)                     |✅  Off-the-shelf        |
 | [Ensemble Scorers](#ensemble-scorers)       | 🔀 Flexible (combines various scorers)       | 🔀 Flexible (combines various scorers)      | 🔀 Flexible (combines various scorers)                    | ✅  Off-the-shelf (beginner-friendly); 🛠️ Can be tuned (best for advanced users)    |
 
 
@@ -82,13 +82,13 @@ Above, `use_best=True` implements mitigation so that the uncertainty-minimized r
 
 ### White-Box Scorers (Token-Probability-Based)
 
-These scorers leverage token probabilities to estimate uncertainty.  They are significantly faster and cheaper than black-box methods, but require access to the LLM's internal probabilities, meaning they are not necessarily compatible with all LLMs/APIs.
+These scorers leverage token probabilities to estimate uncertainty.  They offer single-generation scoring, which is significantly faster and cheaper than black-box methods, but require access to the LLM's internal probabilities, meaning they are not necessarily compatible with all LLMs/APIs.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/images/white_box_graphic_dark.png">
     <source media="(prefers-color-scheme: light)" srcset="assets/images/white_box_graphic.png">
-    <img src="assets/images/white_box_graphic.png" alt="White Box Graphic" />
+    <img src="assets/images/white_box_graphic.png" alt="White Box Graphic"/>
   </picture>
 </p>
 
@@ -112,10 +112,21 @@ results.to_df()
 Again, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used in place of `ChatVertexAI`. For a more detailed demo, refer to our [White-Box UQ Demo](./examples/white_box_demo.ipynb).
 
 
-**Available Scorers:**
+**Single-Generation Scorers (fast/cheap):**
 
 *   Minimum token probability ([Manakul et al., 2023](https://arxiv.org/abs/2303.08896))
-*   Length-Normalized Joint Token Probability ([Malinin & Gales, 2021](https://arxiv.org/abs/2002.07650))
+*   Length-Normalized Sequence Probability ([Malinin & Gales, 2021](https://arxiv.org/pdf/2002.07650))
+*   Sequence Probability ([Vashurin et al., 2024](https://arxiv.org/abs/2406.15627))
+*   Mean Top-K Token Negentropy ([Scalena et al., 2025](https://arxiv.org/abs/2510.11170); [Manakul et al., 2023](https://arxiv.org/abs/2303.08896))
+*   Min Top-K Token Negentropy ([Scalena et al., 2025](https://arxiv.org/abs/2510.11170); [Manakul et al., 2023](https://arxiv.org/abs/2303.08896))
+*   Probability Margin ([Farr et al., 2024](https://arxiv.org/abs/2408.08217))
+
+**Multi-Generation Scorers:**
+
+*   Monte carlo sequence probability ([Kuhn et al., 2023](https://arxiv.org/abs/2302.09664))
+*   Consistency and Confidence (CoCoA) ([Vashurin et al., 2025](https://arxiv.org/abs/2502.04964))
+*   Semantic Entropy ([Farquhar et al., 2024](https://www.nature.com/articles/s41586-024-07421-0)) 
+*   Semantic Density ([Qiu et al., 2024](https://arxiv.org/abs/2405.13845))
 
 ### LLM-as-a-Judge Scorers
 
