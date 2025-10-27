@@ -41,7 +41,7 @@ class PTrueScorer:
     async def evaluate(self, prompts: List[str], responses: List[str], sampled_responses: Optional[List[List[str]]] = None, progress_bar: Optional[Progress] = None) -> Dict[str, float]:
         if not sampled_responses:
             sampled_responses = [None] * len(responses)
-        
+
         ptrue_prompts = [self._construct_ptrue_prompt(original_prompt=original_prompt_i, original_response=original_response_i, sampled_responses=sampled_responses_i) for original_prompt_i, original_response_i, sampled_responses_i in zip(prompts, responses, sampled_responses)]
         ptrue_responses = await self.response_generator.generate_responses(prompts=ptrue_prompts, system_prompt=PTRUE_SYSTEM_PROMPT, progress_bar=progress_bar)
         time.sleep(0.1)
@@ -74,7 +74,6 @@ class PTrueScorer:
                 proposed_answers_text = "\n\nHere are some possible answers:\n"
                 for possible_answer in unique_responses:
                     proposed_answers_text += possible_answer + "\n"
-
 
         ptrue_prompt = f"""
     Question: {original_prompt}

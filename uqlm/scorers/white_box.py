@@ -137,7 +137,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars and _display_header)
 
-        data = {"prompts": prompts, "responses": responses, "logprobs_results": logprobs_results, "sampled_responses": sampled_responses, "sampled_logprobs_results": sampled_logprobs_results}
+        data = {"prompts": prompts, "responses": responses, "logprob": logprobs_results, "sampled_responses": sampled_responses, "sampled_logprob": sampled_logprobs_results}
         data = {key: val for key, val in data.items() if val}
 
         if self.single_logprobs_scorer_names:
