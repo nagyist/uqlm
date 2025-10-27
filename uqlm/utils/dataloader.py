@@ -17,6 +17,7 @@ from typing import Optional, Union
 from datasets import load_dataset, concatenate_datasets
 from datasets import disable_progress_bars
 import re
+import ast
 import numpy as np
 from copy import deepcopy
 
@@ -152,6 +153,8 @@ def load_example_dataset(name: str, n: int = None, cols: Optional[Union[list, st
             df = _dataset_processing(df=df, **extras)  # data wrangling on single df
         if isinstance(n, int):
             df = df.iloc[:n]
+        if name == "popqa":
+            df["answer"] = [ast.literal_eval(a) for a in df["answer"]]
         print("Dataset ready!")
         return df
     else:
