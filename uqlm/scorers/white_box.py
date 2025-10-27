@@ -150,7 +150,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
             data.update(sampled_logprobs_scores_dict)
         if "p_true" in self.scorers:
-            p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses, progress_bar=self.progress_bar)
+            p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
             data.update(p_true_scores_dict)
         result = {"data": data, "metadata": {"temperature": None if not self.llm else self.llm.temperature}}
         return UQResult(result)
