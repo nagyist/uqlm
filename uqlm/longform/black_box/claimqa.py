@@ -1,14 +1,11 @@
 import asyncio
-import contextlib
-import io
-import re
 import numpy as np
 from typing import List, Optional, Any
 from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
 from uqlm.utils.response_generator import ResponseGenerator
 from uqlm.longform.decomposition.response_decomposer import ResponseDecomposer
-from uqlm.utils.prompt_templates import get_factoid_template, get_question_template, get_answer_template, get_claim_breakdown_template
+from uqlm.utils.prompt_templates import get_factoid_template, get_question_template, get_answer_template, get_claim_breakdown_template, get_multiple_question_template
 from uqlm.utils.results import UQResult
 from uqlm.scorers import BlackBoxUQ
 
@@ -51,7 +48,7 @@ class ClaimQAScorer:
             The maximum number of calls per minute to the LLM.
         use_n_param : bool
             Whether to use the n parameter for the LLM.
-        num_questions : int, default=2
+        num_questions : int, default=1
             The number of questions to generate for each factoid.
         num_claim_qa_responses : int, default=2
             The number of responses to generate for each claim-inverted question.
@@ -63,7 +60,7 @@ class ClaimQAScorer:
         self.system_prompt = system_prompt
         self.max_calls_per_min = max_calls_per_min
         self.use_n_param = use_n_param
-        self.num_questions = num_questions # TODO: Currently, class is designed for num_questions = 1
+        self.num_questions = num_questions
         self.num_claim_qa_responses = num_claim_qa_responses
         if response_template == "atomic":
             self.response_template = get_claim_breakdown_template
@@ -99,14 +96,19 @@ class ClaimQAScorer:
     
         initial_index = 0
         for i in range(len(self.factoids)):
-            self.response_fact_questions.append(generated_questions[initial_index:initial_index + num_factoids[i]])
-            self.response_fact_questions_responses.append(bb_result.to_dict()["data"]["responses"][initial_index:initial_index + num_factoids[i]])
-            self.response_fact_questions_sampled_responses.append(bb_result.to_dict()["data"]["sampled_responses"][initial_index:initial_index + num_factoids[i]])
+            self.response_fact_questions.append([generated_questions[j:j+self.num_questions] for j in range(initial_index, initial_index + num_factoids[i]*self.num_questions, self.num_questions)])
+            tmp_data = bb_result.to_dict()["data"]
+            self.response_fact_questions_responses.append([tmp_data["responses"][j:j+self.num_questions] for j in range(initial_index, initial_index + num_factoids[i]*self.num_questions, self.num_questions)])
+            self.response_fact_questions_sampled_responses.append([tmp_data["sampled_responses"][j:j+self.num_questions] for j in range(initial_index, initial_index + num_factoids[i]*self.num_questions, self.num_questions)])
             for key in self.bb_object.scorers:
-                tmp = bb_result.to_dict()["data"][key][initial_index:initial_index + num_factoids[i]]
-                self.response_scores[key].append(np.mean(tmp))
-                self.factoid_scores[key].append(tmp)
-            initial_index += num_factoids[i]
+                tmp = bb_result.to_dict()["data"][key][initial_index:initial_index + num_factoids[i]*self.num_questions]
+                if self.num_questions == 1:
+                    tmp_factoid_scores = tmp
+                else:
+                    tmp_factoid_scores = [np.mean(tmp[j*self.num_questions:(j+1)*self.num_questions]) for j in range(num_factoids[i]*self.num_questions)]
+                self.response_scores[key].append(np.mean(tmp_factoid_scores))
+                self.factoid_scores[key].append(tmp_factoid_scores)
+            initial_index += num_factoids[i]*self.num_questions
 
         return self._construct_result()
 
@@ -114,8 +116,16 @@ class ClaimQAScorer:
         prompt_to_generate_questions = []
         for factoid_set in factoids:
             for factoid_i in factoid_set:
-                prompt_to_generate_questions.append(get_question_template(factoid_i))
+                if self.num_questions == 1:
+                    prompt_to_generate_questions.append(get_question_template(factoid_i))
+                else:
+                    prompt_to_generate_questions.append(get_multiple_question_template(factoid_i, self.num_questions))
         generated_questions = await self._generate_responses(llm=llm, prompts=prompt_to_generate_questions)
+        if self.num_questions > 1:
+            generated_questions_list = []
+            for i in range(len(generated_questions["responses"])):
+                generated_questions_list += [tmp_x for tmp_x in generated_questions["responses"][i].split("###") if len(tmp_x) > 0]
+            return generated_questions_list
         return generated_questions["responses"]
     
     async def generate_and_score(self, prompts: List[str], progress_bar: Optional[Progress] = None):
