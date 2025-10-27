@@ -105,7 +105,7 @@ class ClaimQAScorer:
                 if self.num_questions == 1:
                     tmp_factoid_scores = tmp
                 else:
-                    tmp_factoid_scores = [np.mean(tmp[j*self.num_questions:(j+1)*self.num_questions]) for j in range(num_factoids[i]*self.num_questions)]
+                    tmp_factoid_scores = [np.mean(tmp[j*self.num_questions:(j+1)*self.num_questions]) for j in range(num_factoids[i])]
                 self.response_scores[key].append(np.mean(tmp_factoid_scores))
                 self.factoid_scores[key].append(tmp_factoid_scores)
             initial_index += num_factoids[i]*self.num_questions
