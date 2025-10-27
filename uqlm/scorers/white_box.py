@@ -137,7 +137,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars and _display_header)
 
-        data = {"prompts": prompts, "responses": responses, "logprobs_results": logprobs_results, "sampled_responses": sampled_responses, "sampled_logprobs_results": sampled_logprobs_results}
+        data = {"prompts": prompts, "responses": responses, "logprob": logprobs_results, "sampled_responses": sampled_responses, "sampled_logprob": sampled_logprobs_results}
         data = {key: val for key, val in data.items() if val}
 
         if self.single_logprobs_scorer_names:
@@ -150,7 +150,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
             data.update(sampled_logprobs_scores_dict)
         if "p_true" in self.scorers:
-            p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses, progress_bar=self.progress_bar)
+            p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
             data.update(p_true_scores_dict)
         result = {"data": data, "metadata": {"temperature": None if not self.llm else self.llm.temperature}}
         return UQResult(result)

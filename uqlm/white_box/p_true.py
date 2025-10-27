@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import time
 from typing import Any, Dict, List, Optional
 import numpy as np
 from rich.progress import Progress
@@ -37,9 +38,13 @@ class PTrueScorer:
         self.response_generator = ResponseGenerator(llm, max_calls_per_min=max_calls_per_min)
         self.response_generator.response_generator_type = "p_true"
 
-    async def evaluate(self, prompts: List[str], responses: List[str], progress_bar: Optional[Progress] = None) -> Dict[str, float]:
-        ptrue_prompts = [self._construct_ptrue_prompt(original_prompt, original_response) for original_prompt, original_response in zip(prompts, responses)]
+    async def evaluate(self, prompts: List[str], responses: List[str], sampled_responses: Optional[List[List[str]]] = None, progress_bar: Optional[Progress] = None) -> Dict[str, float]:
+        if not sampled_responses:
+            sampled_responses = [None] * len(responses)
+
+        ptrue_prompts = [self._construct_ptrue_prompt(original_prompt=original_prompt_i, original_response=original_response_i, sampled_responses=sampled_responses_i) for original_prompt_i, original_response_i, sampled_responses_i in zip(prompts, responses, sampled_responses)]
         ptrue_responses = await self.response_generator.generate_responses(prompts=ptrue_prompts, system_prompt=PTRUE_SYSTEM_PROMPT, progress_bar=progress_bar)
+        time.sleep(0.1)
         logprob_results = ptrue_responses["metadata"]["logprobs"]
         ptrue_scores = [self._extract_ptrue_from_logprobs_result(logprob_result) for logprob_result in logprob_results]
         return {"p_true": ptrue_scores}
@@ -60,14 +65,23 @@ class PTrueScorer:
                 return np.nan
 
     @staticmethod
-    def _construct_ptrue_prompt(original_prompt: str, original_response: str) -> str:
+    def _construct_ptrue_prompt(original_prompt: str, original_response: str, sampled_responses: Optional[List[str]] = None) -> str:
+        proposed_answers_text = ""
+        if sampled_responses:
+            unique_responses = list(set(sampled_responses + [original_response]))
+
+            if len(unique_responses) > 1:
+                proposed_answers_text = "\n\nHere are some possible answers:\n"
+                for possible_answer in unique_responses:
+                    proposed_answers_text += possible_answer + "\n"
+
         ptrue_prompt = f"""
-        Question: {original_prompt}
-        
-        Proposed Answer: {original_response}
-        
-        Is the proposed answer to the question true or false? Answer with only one word true/false.
-        
-        True or False:
+    Question: {original_prompt}
+    {proposed_answers_text}
+    Proposed Answer: {original_response}
+
+    Is the proposed answer to the question true or false? Answer with only one word true/false.
+
+    True or False:
         """
         return ptrue_prompt
