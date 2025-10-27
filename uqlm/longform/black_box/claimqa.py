@@ -28,6 +28,7 @@ class ClaimQAScorer:
         use_n_param: bool = False,
         num_questions: int = 1,
         num_claim_qa_responses: int = 5,
+        max_length: int = 1000,
     ):
         """
         Initialize the ClaimQAScorer.
@@ -58,7 +59,7 @@ class ClaimQAScorer:
         self.llm = llm
         self.llm_decomposer = llm_decomposer if llm_decomposer is not None else llm
         self.llm_questioner = llm_questioner if llm_questioner is not None else self.llm_decomposer
-        self.bb_object = BlackBoxUQ(llm=llm, scorers=black_box_scorers, device=device, max_calls_per_min=max_calls_per_min, sampling_temperature=sampling_temperature)
+        self.bb_object = BlackBoxUQ(llm=llm, scorers=black_box_scorers, device=device, max_calls_per_min=max_calls_per_min, sampling_temperature=sampling_temperature, max_length=max_length)
         self.system_prompt = system_prompt
         self.max_calls_per_min = max_calls_per_min
         self.use_n_param = use_n_param
@@ -71,7 +72,7 @@ class ClaimQAScorer:
         else:
             raise ValueError("""response_template must be either "atomic" or "factoid".""")
 
-    async def evaluate(self, prompts: List[str], responses: List[str], factoids: List[List[str]]):
+    async def evaluate(self, factoids: List[List[str]], prompts: Optional[List[str]] = None, responses: Optional[List[str]] = None, progress_bar: Optional[Progress] = None):
         """
         Evaluate the ClaimQA scores for a given set of prompts, responses, and factoids.
         """
@@ -87,22 +88,20 @@ class ClaimQAScorer:
         num_factoids = [len(factoids_i) for factoids_i in self.factoids]
         print("Number of factoids per response: ", num_factoids)
 
-        # Generate question per factoid
-        prompt_to_generate_questions = [get_question_template(factoid_i) for j in range(len(self.responses)) for factoid_i in self.factoids[j]]
-        generated_questions = await self._generate_responses(llm=self.llm_questioner, prompts=prompt_to_generate_questions)
-
-        factoid_questions = [get_answer_template(claim_question=generated_question) for generated_question in generated_questions["responses"]]
+        # Generate question per factoids
+        generated_questions = await self.generate_claim_questions(llm=self.llm_questioner, factoids=self.factoids)
+        factoid_questions = [get_answer_template(claim_question=generated_question) for generated_question in generated_questions]
         print("Number of total questions: ", len(factoid_questions))
 
         # Generate responses for all questions from all factoids obtained from all responses
-        bb_result = await self.bb_object.generate_and_score(prompts=factoid_questions, num_responses=self.num_claim_qa_responses, show_progress_bars=False)
-        print("BB result: ", bb_result.to_dict()["data"]["exact_match"])
+        bb_result = await self.bb_object.generate_and_score(prompts=factoid_questions, num_responses=self.num_claim_qa_responses, show_progress_bars=True)
         print("Length of BB result: ", len(bb_result.to_dict()["data"]["exact_match"]))
-
+    
         initial_index = 0
-        for i in range(len(self.responses)):
-            self.response_fact_questions.append(bb_result.to_dict()["data"]["responses"][initial_index:initial_index + num_factoids[i]])
-            self.response_fact_questions_responses.append(bb_result.to_dict()["data"]["sampled_responses"][initial_index:initial_index + num_factoids[i]])
+        for i in range(len(self.factoids)):
+            self.response_fact_questions.append(generated_questions[initial_index:initial_index + num_factoids[i]])
+            self.response_fact_questions_responses.append(bb_result.to_dict()["data"]["responses"][initial_index:initial_index + num_factoids[i]])
+            self.response_fact_questions_sampled_responses.append(bb_result.to_dict()["data"]["sampled_responses"][initial_index:initial_index + num_factoids[i]])
             for key in self.bb_object.scorers:
                 tmp = bb_result.to_dict()["data"][key][initial_index:initial_index + num_factoids[i]]
                 self.response_scores[key].append(np.mean(tmp))
@@ -111,6 +110,14 @@ class ClaimQAScorer:
 
         return self._construct_result()
 
+    async def generate_claim_questions(self, llm: BaseChatModel, factoids: List[List[str]], progress_bar: Optional[Progress] = None):
+        prompt_to_generate_questions = []
+        for factoid_set in factoids:
+            for factoid_i in factoid_set:
+                prompt_to_generate_questions.append(get_question_template(factoid_i))
+        generated_questions = await self._generate_responses(llm=llm, prompts=prompt_to_generate_questions)
+        return generated_questions["responses"]
+    
     async def generate_and_score(self, prompts: List[str], progress_bar: Optional[Progress] = None):
         """
         Generate and score the responses.
@@ -171,31 +178,27 @@ class ClaimQAScorer:
         List[str]
             A list of responses generated by the LLM.
         """
-        try:
-            generator_object = ResponseGenerator(llm=llm, max_calls_per_min=self.max_calls_per_min, use_n_param=self.use_n_param)
-            with contextlib.redirect_stdout(io.StringIO()):
-                generations = await generator_object.generate_responses(prompts=prompts, count=count, system_prompt=self.system_prompt, progress_bar=progress_bar)
-        except Exception:
-            if progress_bar:
-                progress_bar.stop()
-            raise
+        generator_object = ResponseGenerator(llm=llm, max_calls_per_min=self.max_calls_per_min, use_n_param=self.use_n_param)
+        generations = await generator_object.generate_responses(prompts=prompts, count=count, system_prompt=self.system_prompt, progress_bar=progress_bar)
         return {"responses": generations["data"]["response"], "logprobs": generations["metadata"]["logprobs"]}
 
     def _construct_result(self) -> Any:
         """Constructs UQResult object"""
-        prompts = getattr(self, "prompts", [])
-        responses = getattr(self, "responses", [])
+        data = {}
+        if self.prompts:
+            data["prompts"] = self.prompts
+        if self.responses:
+            data["responses"] = self.prompts
         response_scores = getattr(self, "response_scores", [])
         response_fact_questions = getattr(self, "response_fact_questions", [])
         response_fact_questions_responses = getattr(self, "response_fact_questions_responses", [])
         response_fact_questions_sampled_responses = getattr(self, "response_fact_questions_sampled_responses", [])
         factoid_scores = getattr(self, "factoid_scores", [])
-        data = {"prompts": prompts, "responses": responses}
         tmp = {}
         for key in response_scores:
             tmp["response_scores_"+key] = response_scores[key]
             tmp["factoid_scores_"+key] = factoid_scores[key]
         data.update(tmp)
-        metadata = {"factoids": self.factoids, "response_fact_questions": response_fact_questions, "response_fact_questions_responses": response_fact_questions_responses, "response_fact_questions_sampled_responses": response_fact_questions_sampled_responses}
-        result = {"data": data, "metadata": metadata}
+        data.update({"factoids": self.factoids, "response_fact_questions": response_fact_questions, "response_fact_questions_responses": response_fact_questions_responses, "response_fact_questions_sampled_responses": response_fact_questions_sampled_responses})
+        result = {"data": data, "metadata": {}}
         return UQResult(result)
