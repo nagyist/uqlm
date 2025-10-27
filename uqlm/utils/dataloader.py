@@ -154,7 +154,7 @@ def load_example_dataset(name: str, n: int = None, cols: Optional[Union[list, st
         if isinstance(n, int):
             df = df.iloc[:n]
         if name == "popqa":
-            df['answer']=[ast.literal_eval(a) for a in df['answer']]
+            df["answer"] = [ast.literal_eval(a) for a in df["answer"]]
         print("Dataset ready!")
         return df
     else:
