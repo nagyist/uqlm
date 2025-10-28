@@ -200,7 +200,7 @@ def get_factoid_template(response: str) -> str:
 #     You should only return the final answer. Now your answer is:
 #     """
 
-    return question_template
+    # return question_template
 
 # def get_question_template(
 #     # response: str, 
@@ -287,6 +287,22 @@ def get_question_template(
     Create a specific question that has this exact claim as its only correct answer. Return just the question with no extra text.
 
     Claim: {factoid}
+    """
+    return question_template
+
+def get_multiple_question_template(
+    factoid: str,
+    num_questions: int = 2,
+):
+    question_template = f"""
+    Create a list of {num_questions} distinct questions that are answered by the below factoid. Output each question in one single line starting with ###. Do not include other formatting.
+
+    Factoid: {factoid}
+
+    Example:
+    ### Here is the first question? ### Here is the second question?
+
+    You should only return the final response. Now your response is:
     """
     return question_template
 
