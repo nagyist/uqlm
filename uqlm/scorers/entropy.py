@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import Any, List, Optional, Union
+import math
+from typing import Any, List, Optional, Union, Dict
 import warnings
 from langchain_core.messages import BaseMessage
 
 from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
 from uqlm.utils.results import UQResult
 import time
+from uqlm.nli.cluster import SemanticClusterer
 
 
 class SemanticEntropy(UncertaintyQuantifier):
@@ -38,6 +39,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         nli_model_name: str = "microsoft/deberta-large-mnli",
         max_length: int = 2000,
         return_responses: str = "all",
+        length_normalize: bool = False,
     ) -> None:
         """
         Class for computing discrete and token-probability-based semantic entropy and associated confidence scores. For more on semantic entropy, refer to Farquhar et al.(2024) :footcite:`farquhar2024detectinghallucinations`.
@@ -92,6 +94,9 @@ class SemanticEntropy(UncertaintyQuantifier):
         max_length : int, default=2000
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
+
+        length_normalize : bool, default=False
+            Specifies whether to length normalize the token probabilities.
         """
         super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor)
         self.nli_model_name = nli_model_name
@@ -105,6 +110,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         self.prompts = None
         self.logprobs = None
         self.multiple_logprobs = None
+        self.clusterer = SemanticClusterer(nli_scorer=self.nli_scorer, length_normalize=length_normalize)
 
     async def generate_and_score(self, prompts: List[Union[str, List[BaseMessage]]], num_responses: int = 5, show_progress_bars: Optional[bool] = True) -> UQResult:
         """
@@ -177,8 +183,8 @@ class SemanticEntropy(UncertaintyQuantifier):
         def _process_i(i):
             candidates = [self.responses[i]] + self.sampled_responses[i]
             candidate_logprobs = [self.logprobs[i]] + self.multiple_logprobs[i] if (self.logprobs and self.multiple_logprobs) else None
-            tmp = self.nli_scorer._semantic_entropy_process(candidates=candidates, i=i, logprobs_results=candidate_logprobs, best_response_selection=self.best_response_selection)
-            best_responses[i], discrete_semantic_entropy[i], _, tokenprob_semantic_entropy[i] = tmp
+            tmp = self._semantic_entropy_process(candidates=candidates, i=i, logprobs_results=candidate_logprobs, best_response_selection=self.best_response_selection)
+            best_responses[i], discrete_semantic_entropy[i], tokenprob_semantic_entropy[i] = tmp
 
         self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars)
@@ -190,7 +196,7 @@ class SemanticEntropy(UncertaintyQuantifier):
             if self.progress_bar:
                 self.progress_bar.update(progress_task, advance=1)
         time.sleep(0.1)
-        confidence_scores = [1 - ne for ne in self.nli_scorer._normalize_entropy(discrete_semantic_entropy)]
+        confidence_scores = [1 - ne for ne in self._normalize_entropy(discrete_semantic_entropy)]
 
         if self.use_best:
             self._update_best(best_responses, include_logprobs=self.llm.logprobs)
@@ -200,10 +206,42 @@ class SemanticEntropy(UncertaintyQuantifier):
         data_to_return["discrete_confidence_scores"] = confidence_scores
         if tokenprob_semantic_entropy[0] is not None:
             data_to_return["tokenprob_entropy_values"] = tokenprob_semantic_entropy
-            data_to_return["tokenprob_confidence_scores"] = [1 - ne for ne in self.nli_scorer._normalize_entropy(tokenprob_semantic_entropy)]
+            data_to_return["tokenprob_confidence_scores"] = [1 - ne for ne in self._normalize_entropy(tokenprob_semantic_entropy)]
 
         result = {"data": data_to_return, "metadata": {"parameters": {"temperature": None if not self.llm else self.llm.temperature, "sampling_temperature": None if not self.sampling_temperature else self.sampling_temperature, "num_responses": self.num_responses}}}
 
         self._stop_progress_bar()
         self.progress_bar = None  # if re-run ensure the same progress object is not used
         return UQResult(result)
+
+    def _semantic_entropy_process(self, candidates: List[str], i: int = None, logprobs_results: List[List[Dict[str, Any]]] = None, best_response_selection: str = "discrete") -> Any:
+        """
+        Executes complete process for semantic entropy and returns best response, SE score, and dictionary
+        of NLI scores for response pairs
+        """
+        if self.verbose and i is not None:
+            print("Question No. - ", i + 1)
+        tokenprob_response_probabilities, response_probabilities = self.clusterer.compute_response_probabilities(logprobs_results=logprobs_results, num_responses=len(candidates))
+        best_response, clustered_responses, cluster_probabilities, cluster_indices = self.clusterer.evaluate(responses=candidates, response_probabilities=response_probabilities)
+        # Compute discrete semantic entropy
+        discrete_semantic_entropy = self._compute_semantic_entropy(cluster_probabilities=cluster_probabilities)
+
+        # Compute token-level semantic entropy
+        tokenprob_semantic_entropy = None
+        if tokenprob_response_probabilities:
+            tokenprob_cluster_probabilities = self.clusterer.compute_cluster_probabilities(response_probabilities=tokenprob_response_probabilities, cluster_indices=cluster_indices)
+            tokenprob_semantic_entropy = self._compute_semantic_entropy(cluster_probabilities=tokenprob_cluster_probabilities)
+            if best_response_selection == "token-based":
+                best_response = self.clusterer.best_response_selection(clustered_responses=clustered_responses, cluster_probabilities=tokenprob_cluster_probabilities)
+
+        return (best_response, discrete_semantic_entropy, tokenprob_semantic_entropy)
+
+    def _normalize_entropy(self, entropy_values):
+        return [e / math.log(self.num_responses + 1) for e in entropy_values]
+
+    @staticmethod
+    def _compute_semantic_entropy(cluster_probabilities: List[float]) -> float:
+        """
+        Helper function to compute semantic entropy score from cluster probabilities
+        """
+        return abs(sum([p * math.log(p) if p > 0.0 else 0 for p in cluster_probabilities]))
