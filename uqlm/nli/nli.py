@@ -95,5 +95,5 @@ class NLIScorer:
 
             entailment = left_label == "entailment" or right_label == "entailment"
             avg_noncontradiction_score = ((s1 + s2) / 2)[0]
-            avg_entailment_score = ((left[:, 0] + right[:, 0]) / 2)[0]
+            avg_entailment_score = ((left[:, -1] + right[:, -1]) / 2)[0]
         return {"noncontradiction_score": avg_noncontradiction_score, "entailment": entailment, "entailment_score": avg_entailment_score}
