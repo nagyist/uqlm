@@ -3,8 +3,9 @@ from typing import Any, Dict, List, Tuple
 from uqlm.nli.nli import NLIScorer
 import numpy as np
 
+
 class Cluster:
-    def __init__(self, nli_scorer: NLIScorer=None):
+    def __init__(self, nli_scorer: NLIScorer = None):
         self.nli_scorer = nli_scorer
 
     def evaluate(self, responses: List[str], response_probabilities: List[float]) -> Tuple[str, List[List[str]], List[float], Dict[Tuple[str, str], float]]:

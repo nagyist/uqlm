@@ -82,7 +82,7 @@ class NonContradictionScorer(SimilarityScorer):
 
             candidates = all_responses.remove(best_response)
             self.available_nli_scores = self.cluster.nli_scores
-            
+
         nli_scores = []
         for candidate in candidates:
             if (candidate, best_response) in self.available_nli_scores:

@@ -185,7 +185,7 @@ class BlackBoxUQ(UncertaintyQuantifier):
             available_nli_scores = dict()
             if scorer_key == "semantic_negentropy":
                 se_tmp = self.scorer_objects[scorer_key].score(responses=self.responses, sampled_responses=self.sampled_responses, show_progress_bars=self.progress_bar)
-                self.scores_dict[scorer_key] = [1 - s for s in self.scorer_objects[scorer_key]._normalize_entropy(se_tmp.data["discrete_entropy_values"])] # Convert to confidence score
+                self.scores_dict[scorer_key] = [1 - s for s in self.scorer_objects[scorer_key]._normalize_entropy(se_tmp.data["discrete_entropy_values"])]  # Convert to confidence score
                 available_nli_scores = self.scorer_objects[scorer_key].cluster.nli_scores
                 if self.use_best:
                     self._update_best(se_tmp.data["responses"], include_logprobs=False)
