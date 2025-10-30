@@ -474,12 +474,7 @@ class UQEnsemble(UncertaintyQuantifier):
             time.sleep(0.1)
         else:
             llm_grader = LLMGrader(llm=self.grader_llm)
-            correct_indicators = await llm_grader.grade_responses(
-                prompts=self.prompts, 
-                responses=self.responses, 
-                answers=ground_truth_answers,
-                progress_bar=self.progress_bar,
-            )
+            correct_indicators = await llm_grader.grade_responses(prompts=self.prompts, responses=self.responses, answers=ground_truth_answers, progress_bar=self.progress_bar)
         return correct_indicators
 
     def _construct_result(self) -> Any:
@@ -554,7 +549,7 @@ class UQEnsemble(UncertaintyQuantifier):
         """Normalize weights to sum to 1."""
         weights = weights if weights else [1] * len(self.components)
         return list(self.tuner._normalize_weights(weights))
-        
+
     @staticmethod
     def _validate_grader(grader_function) -> bool:
         "Validate that grader function is valid"

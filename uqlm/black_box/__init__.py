@@ -17,6 +17,6 @@ from uqlm.black_box.bert import BertScorer
 from uqlm.black_box.bleurt import BLEURTScorer  # deprecated in v0.2.0
 from uqlm.black_box.cosine import CosineScorer
 from uqlm.black_box.match import MatchScorer
-from uqlm.black_box.noncontradiction import NonContradictionScorer
+from uqlm.black_box.consistency import ConsistencyScorer
 
-__all__ = ["BertScorer", "CosineScorer", "BLEURTScorer", "MatchScorer", "NonContradictionScorer"]
+__all__ = ["BertScorer", "CosineScorer", "BLEURTScorer", "MatchScorer", "ConsistencyScorer"]

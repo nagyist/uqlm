@@ -13,7 +13,8 @@ class SemanticClusterer:
         """
         Evaluate the cluster of responses.
         """
-        clustered_responses, cluster_indices, self.nli_scores = self.cluster_responses(responses=responses)
+        clustered_responses, cluster_indices, noncontradiction_scores, entailment_scores = self.cluster_responses(responses=responses)
+        self.nli_scores = {"noncontradiction": noncontradiction_scores, "entailment": entailment_scores}
         cluster_probabilities = self.compute_cluster_probabilities(response_probabilities=response_probabilities, cluster_indices=cluster_indices)
         best_response = self.best_response_selection(clustered_responses=clustered_responses, cluster_probabilities=cluster_probabilities)
         return best_response, clustered_responses, cluster_probabilities, cluster_indices
@@ -32,21 +33,23 @@ class SemanticClusterer:
         A list of lists, where each list represents a cluster.
         """
         clusters, cluster_indices = [deque([responses[0]])], [deque([0])]
-        nli_scores = {}
+        noncontradiction_scores = {}
         entailments = {}
+        entailment_scores = {}
         for i in range(1, len(responses)):
             new_cluster_indicator = True
             for j, cluster in enumerate(clusters):
                 key, rev_key = (cluster[0], responses[i]), (responses[i], cluster[0])
-                if key in nli_scores:
+                if key in noncontradiction_scores:
                     # Do not recompute if pair already assessed
                     entailment = entailments[key]
                 else:
                     # Compute nli score and entailment if pair not yet assessed
                     nli_result = self.nli_scorer.get_nli_results(response1=cluster[0], response2=responses[i])
-                    score, entailment = nli_result["score"], nli_result["entailment"]
-                    nli_scores[key], nli_scores[rev_key] = score, score
+                    noncontradiction_score, entailment, entailment_score = nli_result["noncontradiction_score"], nli_result["entailment"], nli_result["entailment_score"]
+                    noncontradiction_scores[key], noncontradiction_scores[rev_key] = noncontradiction_score, noncontradiction_score
                     entailments[key], entailments[rev_key] = entailment, entailment
+                    entailment_scores[key], entailment_scores[rev_key] = entailment_score, entailment_score
                 if entailment:
                     new_cluster_indicator = False
                     cluster.append(responses[i])
@@ -59,7 +62,7 @@ class SemanticClusterer:
         # Arrange cluster so that first element is mode (if exists) else longest
         clusters = [self._sort_responses(list(cluster)) for cluster in clusters]
 
-        return clusters, cluster_indices, nli_scores
+        return clusters, cluster_indices, noncontradiction_scores, entailment_scores
 
     def compute_response_probabilities(self, logprobs_results: List[List[Dict[str, Any]]], num_responses: int = None) -> List[float]:
         """Compute response probabilities"""

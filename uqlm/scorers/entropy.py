@@ -14,7 +14,6 @@
 
 import math
 from typing import Any, List, Optional, Union, Dict
-from typing import Any, List, Optional, Union
 import warnings
 from langchain_core.messages import BaseMessage
 
@@ -185,7 +184,7 @@ class SemanticEntropy(UncertaintyQuantifier):
             candidates = [self.responses[i]] + self.sampled_responses[i]
             candidate_logprobs = [self.logprobs[i]] + self.multiple_logprobs[i] if (self.logprobs and self.multiple_logprobs) else None
             tmp = self._semantic_entropy_process(candidates=candidates, i=i, logprobs_results=candidate_logprobs, best_response_selection=self.best_response_selection)
-            best_responses[i], discrete_semantic_entropy[i], _, tokenprob_semantic_entropy[i] = tmp
+            best_responses[i], discrete_semantic_entropy[i], tokenprob_semantic_entropy[i] = tmp
 
         self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars)
@@ -235,7 +234,7 @@ class SemanticEntropy(UncertaintyQuantifier):
             if best_response_selection == "token-based":
                 best_response = self.clusterer.best_response_selection(clustered_responses=clustered_responses, cluster_probabilities=tokenprob_cluster_probabilities)
 
-        return (best_response, discrete_semantic_entropy, self.clusterer.nli_scores, tokenprob_semantic_entropy)
+        return (best_response, discrete_semantic_entropy, tokenprob_semantic_entropy)
 
     def _normalize_entropy(self, entropy_values):
         return [e / math.log(self.num_responses + 1) for e in entropy_values]

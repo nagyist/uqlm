@@ -19,7 +19,7 @@ from typing import Any, List, Optional, Union
 
 from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
 from uqlm.utils.results import UQResult
-from uqlm.black_box import BertScorer, CosineScorer, MatchScorer, NonContradictionScorer
+from uqlm.black_box import BertScorer, CosineScorer, MatchScorer, ConsistencyScorer
 from uqlm.scorers.entropy import SemanticEntropy
 
 
@@ -52,19 +52,19 @@ class BlackBoxUQ(UncertaintyQuantifier):
             relevant parameters to the constructor of their `llm` object.
 
         scorers : subset of {
-            'semantic_negentropy', 'noncontradiction', 'exact_match', 'bert_score', 'cosine_sim'
+            'semantic_negentropy', 'noncontradiction', 'exact_match', 'bert_score', 'cosine_sim', 'entailment'
         }, default=None
             Specifies which black box (consistency) scorers to include. If None, defaults to
-            ["semantic_negentropy", "noncontradiction", "exact_match", "cosine_sim"]. The bleurt
+            ["semantic_negentropy", "noncontradiction", "exact_match", "cosine_sim", "entailment"]. The bleurt
             scorer is deprecated as of v0.2.0.
 
         device: str or torch.device input or torch.device object, default="cpu"
-            Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'noncontradiction'
+            Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'noncontradiction', 'entailment'
             scorers. Pass a torch.device to leverage GPU.
 
         use_best : bool, default=True
             Specifies whether to swap the original response for the uncertainty-minimized response
-            based on semantic entropy clusters. Only used if `scorers` includes 'semantic_negentropy' or 'noncontradiction'.
+            based on semantic entropy clusters. Only used if `scorers` includes 'semantic_negentropy', 'noncontradiction', or 'entailment'.
 
         nli_model_name : str, default="microsoft/deberta-large-mnli"
             Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
@@ -176,23 +176,24 @@ class BlackBoxUQ(UncertaintyQuantifier):
         self.responses = responses
         self.sampled_responses = sampled_responses
         self.num_responses = len(sampled_responses[0])
-        self.scores_dict = {k: [] for k in self.scorer_objects}
+        self.scores_dict = dict()
 
         self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars and _display_header)
 
+        available_nli_scores = dict()
         for scorer_key in self.scorer_objects:
-            available_nli_scores = dict()
             if scorer_key == "semantic_negentropy":
                 se_tmp = self.scorer_objects[scorer_key].score(responses=self.responses, sampled_responses=self.sampled_responses, show_progress_bars=self.progress_bar)
                 self.scores_dict[scorer_key] = [1 - s for s in self.scorer_objects[scorer_key]._normalize_entropy(se_tmp.data["discrete_entropy_values"])]  # Convert to confidence score
                 available_nli_scores = self.scorer_objects[scorer_key].clusterer.nli_scores
                 if self.use_best:
                     self._update_best(se_tmp.data["responses"], include_logprobs=False)
-            elif scorer_key == "noncontradiction":
+            elif scorer_key == "consistency":
                 self.scorer_objects[scorer_key].use_best = False
                 nc_tmp = self.scorer_objects[scorer_key].evaluate(responses=self.responses, sampled_responses=self.sampled_responses, available_nli_scores=available_nli_scores, progress_bar=self.progress_bar)
-                self.scores_dict[scorer_key] = nc_tmp["noncontradiction"]
+                for scorer in self.scorer_objects[scorer_key].scorers:
+                    self.scores_dict[scorer] = nc_tmp[scorer]
             elif scorer_key in ["exact_match", "bert_score", "cosine_sim"]:
                 self.scores_dict[scorer_key] = self.scorer_objects[scorer_key].evaluate(responses=self.responses, sampled_responses=self.sampled_responses, progress_bar=self.progress_bar)
         result = self._construct_result()
@@ -213,6 +214,7 @@ class BlackBoxUQ(UncertaintyQuantifier):
         self.scorer_objects = {}
         if scorers is None:
             scorers = self.default_black_box_names
+        consistency = []
         for scorer in scorers:
             if scorer == "exact_match":
                 self.scorer_objects["exact_match"] = MatchScorer()
@@ -220,8 +222,8 @@ class BlackBoxUQ(UncertaintyQuantifier):
                 self.scorer_objects["bert_score"] = BertScorer(device=self.device)
             elif scorer == "cosine_sim":
                 self.scorer_objects["cosine_sim"] = CosineScorer(transformer=self.sentence_transformer)
-            elif scorer == "noncontradiction":
-                self.scorer_objects["noncontradiction"] = NonContradictionScorer(nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best)
+            elif scorer in ["noncontradiction", "entailment"]:
+                consistency.append(scorer)
             elif scorer == "semantic_negentropy":
                 self.scorer_objects["semantic_negentropy"] = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best)
             else:
@@ -232,4 +234,7 @@ class BlackBoxUQ(UncertaintyQuantifier):
                     scorers must be one of ['semantic_negentropy', 'noncontradiction', 'exact_match', 'bert_score', 'cosine_sim']
                     """
                 )
+        if consistency:
+            self.scorer_objects["consistency"] = ConsistencyScorer(nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best, scorers=consistency)
+
         self.scorers = scorers

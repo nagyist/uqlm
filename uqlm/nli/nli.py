@@ -84,7 +84,7 @@ class NLIScorer:
     def get_nli_results(self, response1: str, response2: str) -> Dict[str, Any]:
         """This method computes mean NLI score and determines whether entailment exists."""
         if response1 == response2:
-            avg_nli_score, entailment = 1, True
+            avg_noncontradiction_score, entailment, avg_entailment_score = 1, True, 1
         else:
             left = self.predict(response1=response1, response2=response2)
             left_label = self.label_mapping[left.argmax(axis=1)[0]]
@@ -94,5 +94,6 @@ class NLIScorer:
             s1, s2 = 1 - left[:, 0], 1 - right[:, 0]
 
             entailment = left_label == "entailment" or right_label == "entailment"
-            avg_nli_score = ((s1 + s2) / 2)[0]
-        return {"score": avg_nli_score, "entailment": entailment}
+            avg_noncontradiction_score = ((s1 + s2) / 2)[0]
+            avg_entailment_score = ((left[:, 0] + right[:, 0]) / 2)[0]
+        return {"noncontradiction_score": avg_noncontradiction_score, "entailment": entailment, "entailment_score": avg_entailment_score}

@@ -7,8 +7,8 @@ from uqlm.nli.nli import NLIScorer
 from uqlm.nli.cluster import SemanticClusterer
 
 
-class NonContradictionScorer(SimilarityScorer):
-    def __init__(self, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, use_best: bool = False):
+class ConsistencyScorer(SimilarityScorer):
+    def __init__(self, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, use_best: bool = False, scorers: List[str] = ["noncontradiction", "entailment"]):
         """
         Initialize the NonContradictionScorer.
 
@@ -23,6 +23,7 @@ class NonContradictionScorer(SimilarityScorer):
         self.max_length = max_length
         self.use_best = use_best
         self.nli_scorer = NLIScorer(nli_model_name=nli_model_name, max_length=max_length)
+        self.scorers = scorers
 
     def evaluate(self, responses: List[str], sampled_responses: List[List[str]], available_nli_scores: Dict[Tuple[str, str], float] = dict(), progress_bar: Optional[Progress] = None) -> Dict[str, Any]:
         """
@@ -47,11 +48,12 @@ class NonContradictionScorer(SimilarityScorer):
         """
         self.available_nli_scores = available_nli_scores
         self.num_responses = len(sampled_responses[0])
-        observed_consistency_data = {"noncontradiction": [], "discrete_semantic_entropy": [], "tokenprob_semantic_entropy": [], "responses": responses, "sampled_responses": sampled_responses}
+        observed_consistency_data = {"noncontradiction": [], "entailment": [], "discrete_semantic_entropy": [], "tokenprob_semantic_entropy": [], "responses": responses, "sampled_responses": sampled_responses}
 
         def _process_i(i, response):
             oc_result_i = self._observed_consistency_i(original=response, candidates=sampled_responses[i])
-            observed_consistency_data["noncontradiction"].append(oc_result_i["nli_score_i"])
+            for scorer in self.scorers:
+                observed_consistency_data[scorer].append(oc_result_i[scorer])
             responses[i] = oc_result_i["response"]  # Replace with optimized response if use_best
             sampled_responses[i] = oc_result_i["candidates"]  # Replace with updated candidates if use_best
 
@@ -83,12 +85,16 @@ class NonContradictionScorer(SimilarityScorer):
             candidates = all_responses.remove(best_response)
             self.available_nli_scores = self.clusterer.nli_scores
 
-        nli_scores = []
-        for candidate in candidates:
-            if (candidate, best_response) in self.available_nli_scores:
-                nli_score = self.available_nli_scores[(candidate, best_response)]
-            else:
-                nli_score = self.nli_scorer.get_nli_results(response1=best_response, response2=candidate)["score"]
-            nli_scores.append(nli_score)
+        nli_scores = {}
+        for s_ in self.scorers:
+            nli_scores[s_] = []
+            for candidate in candidates:
+                if s_ in self.available_nli_scores:
+                    if (candidate, best_response) in self.available_nli_scores[s_]:
+                        nli_scores[s_].append(self.available_nli_scores[s_][(candidate, best_response)])
+                        continue
+                nli_scores[s_].append(self.nli_scorer.get_nli_results(response1=best_response, response2=candidate)[s_ + "_score"])
 
-        return {"nli_score_i": np.mean(nli_scores), "candidates": candidates, "response": best_response}
+        result = {n: np.mean(nli_scores[n]) for n in self.scorers}
+        result.update({"candidates": candidates, "response": best_response})
+        return result
