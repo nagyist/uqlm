@@ -16,13 +16,13 @@ from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
 from uqlm.utils.results import UQResult
 from typing import Any, Optional, List
 import time
-from uqlm.utils.cluster import Cluster
+from uqlm.nli.cluster import SemanticClusterer
 from typing import Any, Optional, List, Dict
 import numpy as np
 
 
 class SemanticDensity(UncertaintyQuantifier):
-    def __init__(self, llm=None, postprocessor: Any = None, device: Any = None, system_prompt: str = "You are a helpful assistant.", max_calls_per_min: Optional[int] = None, use_n_param: bool = False, sampling_temperature: float = 1.0, verbose: bool = False, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, return_responses: str = "all"):
+    def __init__(self, llm=None, postprocessor: Any = None, device: Any = None, system_prompt: str = "You are a helpful assistant.", max_calls_per_min: Optional[int] = None, use_n_param: bool = False, sampling_temperature: float = 1.0, verbose: bool = False, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, return_responses: str = "all", length_normalize: bool = False):
         """
         Class for computing semantic density and associated confidence scores. For more on semantic density, refer to Qiu et al.(2024) :footcite:`qiu2024semanticdensityuncertaintyquantification`.
 
@@ -68,6 +68,9 @@ class SemanticDensity(UncertaintyQuantifier):
         max_length : int, default=2000
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
+
+        length_normalize : bool, default=False
+            Determines whether response probabilities are length-normalized. Recommended to set as True when longer responses are expected.
         """
         super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor)
         self.nli_model_name = nli_model_name
@@ -77,7 +80,7 @@ class SemanticDensity(UncertaintyQuantifier):
         self.return_responses = return_responses
         self._setup_nli(nli_model_name)
         self.prompts = None
-        self.cluster = Cluster(nli_scorer=self.nli_scorer)
+        self.clusterer = SemanticClusterer(nli_scorer=self.nli_scorer, length_normalize=length_normalize)
 
     async def generate_and_score(self, prompts: List[str], num_responses: int = 5, show_progress_bars: Optional[bool] = True) -> UQResult:
         """
@@ -183,7 +186,7 @@ class SemanticDensity(UncertaintyQuantifier):
             print("Question No. - ", i + 1)
 
         # Get the length-normalized tokenwise probability for each candidate response
-        tokenprob_response_probabilities, _ = self.cluster.compute_response_probabilities(logprobs_results=logprobs_results, num_responses=len(candidates))
+        tokenprob_response_probabilities, _ = self.clusterer.compute_response_probabilities(logprobs_results=logprobs_results, num_responses=len(candidates))
 
         # Compute entailment of each candidate response by the original response,
         # conditioned on prompt

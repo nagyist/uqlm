@@ -4,9 +4,10 @@ from uqlm.nli.nli import NLIScorer
 import numpy as np
 
 
-class Cluster:
-    def __init__(self, nli_scorer: NLIScorer = None):
+class SemanticClusterer:
+    def __init__(self, nli_scorer: NLIScorer = None, length_normalize: bool = False):
         self.nli_scorer = nli_scorer
+        self.length_normalize = length_normalize
 
     def evaluate(self, responses: List[str], response_probabilities: List[float]) -> Tuple[str, List[List[str]], List[float], Dict[Tuple[str, str], float]]:
         """
@@ -63,7 +64,7 @@ class Cluster:
     def compute_response_probabilities(self, logprobs_results: List[List[Dict[str, Any]]], num_responses: int = None) -> List[float]:
         """Compute response probabilities"""
         uniform_response_probabilities = [1 / num_responses] * num_responses
-        tokenprob_response_probabilities = [self.avg_logprob(logprobs_i) if logprobs_i else np.nan for logprobs_i in logprobs_results] if logprobs_results else None
+        tokenprob_response_probabilities = [self.length_norm_sequence_prob(logprobs_i, self.length_normalize) if logprobs_i else np.nan for logprobs_i in logprobs_results] if logprobs_results else None
         return tokenprob_response_probabilities, uniform_response_probabilities
 
     def compute_cluster_probabilities(self, response_probabilities: List[float], cluster_indices: List[List[int]]) -> List[float]:
@@ -74,9 +75,10 @@ class Cluster:
         return self._normalize_cluster_probabilities(cluster_probabilities=cluster_probabilities)
 
     @staticmethod
-    def avg_logprob(logprobs: List[Dict[str, Any]]) -> float:
-        "Compute average logprob"
-        return np.prod([np.exp(d["logprob"]) for d in logprobs])
+    def length_norm_sequence_prob(logprobs: List[Dict[str, Any]], length_normalize: bool = True) -> float:
+        "Compute length normalized sequence logprob"
+        factor = 1 / len(logprobs) if length_normalize else 1
+        return np.exp(np.sum([d["logprob"] for d in logprobs]) * factor)
 
     @staticmethod
     def best_response_selection(clustered_responses: List[List[str]], cluster_probabilities: List[float]) -> str:

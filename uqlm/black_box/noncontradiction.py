@@ -4,7 +4,7 @@ import numpy as np
 from rich.progress import Progress
 from uqlm.black_box.baseclass.similarity_scorer import SimilarityScorer
 from uqlm.nli.nli import NLIScorer
-from uqlm.utils.cluster import Cluster
+from uqlm.nli.cluster import SemanticClusterer
 
 
 class NonContradictionScorer(SimilarityScorer):
@@ -76,12 +76,12 @@ class NonContradictionScorer(SimilarityScorer):
         if self.use_best:
             all_responses = [original] + candidates
 
-            self.cluster = Cluster(nli_scorer=self.nli_scorer)
-            _, response_probabilities = self.cluster.compute_response_probabilities(logprobs_results=None, num_responses=len(all_responses))
-            best_response, _, _, _ = self.cluster.evaluate(responses=all_responses, response_probabilities=response_probabilities)
+            self.clusterer = SemanticClusterer(nli_scorer=self.nli_scorer)
+            _, response_probabilities = self.clusterer.compute_response_probabilities(logprobs_results=None, num_responses=len(all_responses))
+            best_response, _, _, _ = self.clusterer.evaluate(responses=all_responses, response_probabilities=response_probabilities)
 
             candidates = all_responses.remove(best_response)
-            self.available_nli_scores = self.cluster.nli_scores
+            self.available_nli_scores = self.clusterer.nli_scores
 
         nli_scores = []
         for candidate in candidates:

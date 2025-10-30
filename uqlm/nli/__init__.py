@@ -14,5 +14,6 @@
 
 
 from uqlm.nli.nli import NLIScorer
+from uqlm.nli.cluster import SemanticClusterer
 
-__all__ = ["NLIScorer"]
+__all__ = ["NLIScorer", "SemanticClusterer"]
