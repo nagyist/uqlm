@@ -25,7 +25,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from uqlm.utils.warn import beta_warning
 
 
-generator_type_to_progress_msg = {"judge": "Scoring responses with LLM-as-a-Judge", "original": "Generating responses", "p_true": "Scoring responses with P(True)", "grader": "Grading responses against provided answers"}
+generator_type_to_progress_msg = {"judge": "Scoring responses with LLM-as-a-Judge", "original": "Generating responses", "p_true": "Scoring responses with P(True)", "grader": "Grading responses against provided ground truth answers"}
 
 
 class ResponseGenerator:
