@@ -118,7 +118,7 @@ class SemanticDensity(UncertaintyQuantifier):
         sampled_responses = await self.generate_candidate_responses(prompts, num_responses=self.num_responses, progress_bar=self.progress_bar)
         return self.score(responses=responses, sampled_responses=sampled_responses, show_progress_bars=show_progress_bars)
 
-    def score(self, responses: List[str] = None, sampled_responses: List[List[str]] = None, show_progress_bars: Optional[bool] = True) -> UQResult:
+    def score(self, responses: List[str] = None, sampled_responses: List[List[str]] = None, logprobs_results: List[List[Dict[str, Any]]] = None, sampled_logprobs_results: List[List[List[Dict[str, Any]]]] = None, show_progress_bars: Optional[bool] = True) -> UQResult:
         """
         Evaluate semantic density score on LLM responses for the provided prompts.
 
@@ -130,6 +130,12 @@ class SemanticDensity(UncertaintyQuantifier):
         sampled_responses : list of list of str, default=None
             A list of lists of sampled model responses for each prompt. These will be used to compute consistency scores by comparing to
             the corresponding response from `responses`. If not provided, sampled_responses will be generated with the provided LLM.
+
+        logprobs_results : list of list of dict, default=None
+            A list of lists of logprobs results for each prompt. If not provided, logprobs will be generated with the provided LLM.
+
+        sampled_logprobs_results : list of list of list of dict, default=None
+            A list of lists of lists of logprobs results for each prompt. If not provided, sampled_logprobs will be generated with the provided LLM.
 
         show_progress_bars : bool, default=True
             If True, displays a progress bar while scoring responses
@@ -143,6 +149,9 @@ class SemanticDensity(UncertaintyQuantifier):
         self.sampled_responses = sampled_responses
         self.num_responses = len(self.sampled_responses[0])
         self.nli_scorer.num_responses = self.num_responses
+        self.logprobs = logprobs_results if logprobs_results else self.logprobs
+        self.multiple_logprobs = sampled_logprobs_results if sampled_logprobs_results else self.multiple_logprobs
+
 
         n_prompts = len(self.responses)
         semantic_density = [None] * n_prompts

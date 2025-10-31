@@ -98,7 +98,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         if self.sampled_logprobs_scorer_names:
             self.llm.logprobs = True  # reset attribute to True
             sampled_responses = await self.generate_candidate_responses(prompts=prompts, num_responses=num_responses, progress_bar=self.progress_bar)
-        result = await self.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=self.logprobs, sampled_logprobs_results=self.multiple_logprobs)
+        result = await self.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=self.logprobs, sampled_logprobs_results=self.multiple_logprobs, show_progress_bars=show_progress_bars)
 
         self._stop_progress_bar()
         self.progress_bar = None  # if re-run ensure the same progress object is not used
@@ -147,7 +147,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             top_logprobs_scores_dict = self.top_logprobs_scorer.evaluate(logprobs_results)
             data.update(top_logprobs_scores_dict)
         if self.sampled_logprobs_scorer_names:
-            sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
+            sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses, prompts=prompts, progress_bar=self.progress_bar)
             data.update(sampled_logprobs_scores_dict)
         if "p_true" in self.scorers:
             p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
@@ -176,6 +176,6 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             self.top_k_logprobs = top_k_logprobs
             beta_warning("Scoring with top_logprobs is in beta. Please use it with caution as it may change in future releases.")
         if self.sampled_logprobs_scorer_names:
-            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names)
+            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm)
         if "p_true" in self.scorers:
             self.p_true_scorer = PTrueScorer(llm=self.llm, max_calls_per_min=self.max_calls_per_min)

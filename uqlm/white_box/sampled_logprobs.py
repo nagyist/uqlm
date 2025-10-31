@@ -16,37 +16,73 @@
 from typing import List, Dict, Any, Optional
 import numpy as np
 from rich.progress import Progress
+from langchain_core.language_models.chat_models import BaseChatModel
+from uqlm.scorers.entropy import SemanticEntropy
+from uqlm.scorers.density import SemanticDensity
 from uqlm.black_box.cosine import CosineScorer
 from uqlm.white_box.baseclass.logprobs_scorer import LogprobsScorer
 
 
 SAMPLED_LOGPROBS_SCORER_NAMES = [
-    # "semantic_negentropy", "semantic_density",
+    "semantic_negentropy",
+    "semantic_density",
     "monte_carlo_probability",
     "consistency_and_confidence",
 ]
 
 
 class SampledLogprobsScorer(LogprobsScorer):
-    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES):
+    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm : BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, use_best: bool = True):
+        """
+        Initialize the SampledLogprobsScorer.
+
+        Parameters
+        ----------
+        scorers : List[str], default=SAMPLED_LOGPROBS_SCORER_NAMES
+            Specifies which scorers to compute.
+            Must be a subset of ["semantic_negentropy", "semantic_density", "monte_carlo_probability", "consistency_and_confidence"].
+        
+        llm : BaseChatModel, default=None
+            Specifies the LLM to use. Must be a BaseChatModel.
+
+        nli_model_name : str, default="microsoft/deberta-large-mnli"
+            Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
+            AutoModelForSequenceClassification.from_pretrained()
+
+        max_length : int, default=2000
+            Specifies the maximum allowed string length. Responses longer than this value will be truncated to
+            avoid OutOfMemoryError
+
+        use_best : bool, default=True
+            Specifies whether to swap the original response for the uncertainty-minimized response
+            based on semantic entropy clusters.
+        """
         super().__init__()
         self.scorers = scorers
+        self.llm = llm
+        self.nli_model_name = nli_model_name
+        self.max_length = max_length
+        self.use_best = use_best
 
-    def evaluate(self, logprobs_results: List[List[Dict[str, Any]]], responses: List[str], sampled_responses: List[List[str]], sampled_logprobs_results: Optional[List[List[List[Dict[str, Any]]]]] = None, progress_bar: Optional[Progress] = None):
+    def evaluate(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: Optional[List[List[List[Dict[str, Any]]]]] = None, prompts: List[str] = None, progress_bar: Optional[Progress] = None):
         scores_dict = {}
         if "monte_carlo_probability" in self.scorers:
-            scores_dict["monte_carlo_probability"] = self.monte_carlo_probability(logprobs_results=logprobs_results, responses=responses, sampled_responses=sampled_responses, sampled_logprobs_results=sampled_logprobs_results)
+            scores_dict["monte_carlo_probability"] = self.monte_carlo_probability(responses=responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results)
         if "consistency_and_confidence" in self.scorers:
-            scores_dict["consistency_and_confidence"] = self.compute_consistency_confidence(logprobs_results=logprobs_results, responses=responses, sampled_responses=sampled_responses, progress_bar=progress_bar)
+            scores_dict["consistency_and_confidence"] = self.compute_consistency_confidence(responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, progress_bar=progress_bar)
+        if "semantic_negentropy" in self.scorers:
+            scores_dict["semantic_negentropy"] = self.compute_semantic_negentropy(responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, progress_bar=progress_bar)
+        if "semantic_density" in self.scorers:
+            scores_dict["semantic_density"] = self.compute_semantic_density(responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, prompts=prompts, progress_bar=progress_bar)
         return {k: scores_dict[k] for k in self.scorers}
 
-    def compute_consistency_confidence(self, logprobs_results: List[List[Dict[str, Any]]], responses: List[str], sampled_responses: List[List[str]], progress_bar: Optional[Progress] = None) -> List[float]:
+    def compute_consistency_confidence(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], progress_bar: Optional[Progress] = None) -> List[float]:
         cosine_scores = CosineScorer().evaluate(responses=responses, sampled_responses=sampled_responses, progress_bar=progress_bar)
         response_probs = self._compute_single_generation_scores(logprobs_results, self._norm_prob)
         cocoa_scores = [cs * rp for cs, rp in zip(cosine_scores, response_probs)]
         return cocoa_scores
 
-    def monte_carlo_probability(self, logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]], responses: List[str], sampled_responses: List[List[str]]) -> List[float]:
+    def monte_carlo_probability(self, responses: List[str], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]]) -> List[float]:
         monte_carlo_scores = []
         for i in range(len(responses)):
             all_logprobs_response_i = [logprobs_results[i]] + sampled_logprobs_results[i]
@@ -54,3 +90,14 @@ class SampledLogprobsScorer(LogprobsScorer):
             monte_carlo_sequence_prob_i = np.mean(all_sampled_sequence_probs_response_i)
             monte_carlo_scores.append(monte_carlo_sequence_prob_i)
         return monte_carlo_scores
+
+    def compute_semantic_negentropy(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]], progress_bar: Optional[Progress] = None) -> List[float]:
+        semantic_negentropy_scorer = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best)
+        se_result = semantic_negentropy_scorer.score(responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, show_progress_bars=progress_bar)
+        return se_result.to_dict()["data"]["tokenprob_confidence_scores"]
+
+    def compute_semantic_density(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]], prompts: List[str] = None, progress_bar: Optional[Progress] = None) -> List[float]:
+        semantic_density_scorer = SemanticDensity(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length)
+        semantic_density_scorer.prompts = prompts
+        sd_result = semantic_density_scorer.score(responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, show_progress_bars=progress_bar)
+        return sd_result.to_dict()["data"]["semantic_density_values"]
