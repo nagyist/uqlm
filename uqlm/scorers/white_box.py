@@ -28,7 +28,7 @@ ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_
 
 
 class WhiteBoxUQ(UncertaintyQuantifier):
-    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, prompts_in_nli: bool = False) -> None:
+    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = False, prompts_in_nli: bool = False) -> None:
         """
         Class for computing white-box UQ confidence scores. This class offers two confidence scores, normalized
         probability :footcite:`malinin2021uncertaintyestimationautoregressivestructured` and minimum probability :footcite:`manakul2023selfcheckgptzeroresourceblackboxhallucination`.
@@ -60,10 +60,14 @@ class WhiteBoxUQ(UncertaintyQuantifier):
 
         prompts_in_nli : bool, default=False
             Specifies whether to use the prompts in the NLI inputs.
+
+        length_normalize : bool, default=False
+            Specifies whether to length normalize the NLI inputs.
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.sampling_temperature = sampling_temperature
         self.top_k_logprobs = None  # used only if top_logprobs scorers used
+        self.length_normalize = length_normalize
         self.prompts_in_nli = prompts_in_nli
         self._validate_scorers(scorers, top_k_logprobs)
         self.multiple_logprobs = None
@@ -180,6 +184,6 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             self.top_k_logprobs = top_k_logprobs
             beta_warning("Scoring with top_logprobs is in beta. Please use it with caution as it may change in future releases.")
         if self.sampled_logprobs_scorer_names:
-            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm, prompts_in_nli=self.prompts_in_nli)
+            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize)
         if "p_true" in self.scorers:
             self.p_true_scorer = PTrueScorer(llm=self.llm, max_calls_per_min=self.max_calls_per_min)
