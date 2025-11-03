@@ -3,7 +3,7 @@ import time
 import numpy as np
 from rich.progress import Progress
 from uqlm.black_box.baseclass.similarity_scorer import SimilarityScorer
-from uqlm.nli.nli import NLIScorer
+from uqlm.nli.nli import NLI
 from uqlm.nli.cluster import SemanticClusterer
 
 
@@ -22,7 +22,7 @@ class ConsistencyScorer(SimilarityScorer):
         self.nli_model_name = nli_model_name
         self.max_length = max_length
         self.use_best = use_best
-        self.nli_scorer = NLIScorer(nli_model_name=nli_model_name, max_length=max_length)
+        self.nli = NLI(nli_model_name=nli_model_name, max_length=max_length)
         self.scorers = scorers
 
     def evaluate(self, responses: List[str], sampled_responses: List[List[str]], available_nli_scores: Dict[Tuple[str, str], float] = dict(), progress_bar: Optional[Progress] = None) -> Dict[str, Any]:
@@ -78,7 +78,7 @@ class ConsistencyScorer(SimilarityScorer):
         if self.use_best:
             all_responses = [original] + candidates
 
-            self.clusterer = SemanticClusterer(nli_scorer=self.nli_scorer)
+            self.clusterer = SemanticClusterer(nli=self.nli)
             _, response_probabilities = self.clusterer.compute_response_probabilities(logprobs_results=None, num_responses=len(all_responses))
             best_response, _, _, _ = self.clusterer.evaluate(responses=all_responses, response_probabilities=response_probabilities)
 
@@ -93,7 +93,7 @@ class ConsistencyScorer(SimilarityScorer):
                     if (candidate, best_response) in self.available_nli_scores[s_]:
                         nli_scores[s_].append(self.available_nli_scores[s_][(candidate, best_response)])
                         continue
-                nli_scores[s_].append(self.nli_scorer.get_nli_results(response1=best_response, response2=candidate)[s_ + "_score"])
+                nli_scores[s_].append(self.nli.get_nli_results(response1=best_response, response2=candidate)[s_ + "_score"])
 
         result = {n: np.mean(nli_scores[n]) for n in self.scorers}
         result.update({"candidates": candidates, "response": best_response})

@@ -110,6 +110,6 @@ class SampledLogprobsScorer(LogprobsScorer):
     def compute_semantic_density(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]], prompts: List[str] = None, progress_bar: Optional[Progress] = None) -> List[float]:
         semantic_density_scorer = SemanticDensity(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length)
         semantic_density_scorer.prompts = prompts
-        semantic_density_scorer.nli_scorer.probabilities = self.semantic_negentropy_scorer.clusterer.nli_scorer.probabilities
+        semantic_density_scorer.nli.probabilities = self.semantic_negentropy_scorer.clusterer.nli.probabilities
         sd_result = semantic_density_scorer.score(responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, show_progress_bars=progress_bar)
         return sd_result.to_dict()["data"]["semantic_density_values"]

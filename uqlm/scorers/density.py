@@ -80,7 +80,7 @@ class SemanticDensity(UncertaintyQuantifier):
         self.return_responses = return_responses
         self._setup_nli(nli_model_name)
         self.prompts = None
-        self.clusterer = SemanticClusterer(nli_scorer=self.nli_scorer, length_normalize=length_normalize)
+        self.clusterer = SemanticClusterer(nli=self.nli, length_normalize=length_normalize)
 
     async def generate_and_score(self, prompts: List[str], num_responses: int = 5, show_progress_bars: Optional[bool] = True) -> UQResult:
         """
@@ -104,7 +104,7 @@ class SemanticDensity(UncertaintyQuantifier):
         """
         self.prompts = prompts
         self.num_responses = num_responses
-        self.nli_scorer.num_responses = num_responses
+        self.nli.num_responses = num_responses
 
         if hasattr(self.llm, "logprobs"):
             self.llm.logprobs = True
@@ -148,7 +148,7 @@ class SemanticDensity(UncertaintyQuantifier):
         self.responses = responses
         self.sampled_responses = sampled_responses
         self.num_responses = len(self.sampled_responses[0])
-        self.nli_scorer.num_responses = self.num_responses
+        self.nli.num_responses = self.num_responses
         self.logprobs = logprobs_results if logprobs_results else self.logprobs
         self.multiple_logprobs = sampled_logprobs_results if sampled_logprobs_results else self.multiple_logprobs
 
@@ -202,14 +202,14 @@ class SemanticDensity(UncertaintyQuantifier):
         nli_scores = []
         for candidate in candidates:
             input = (f"{prompt}\n{original_response}", f"{prompt}\n{candidate}")
-            if input[0] + "_" + input[1] not in self.nli_scorer.probabilities:
-                nli_scores.append(self.nli_scorer.predict(input[0], input[1]))
+            if input[0] + "_" + input[1] not in self.nli.probabilities:
+                nli_scores.append(self.nli.predict(input[0], input[1]))
             else:
-                nli_scores.append(self.nli_scorer.probabilities[input[0] + "_" + input[1]])
+                nli_scores.append(self.nli.probabilities[input[0] + "_" + input[1]])
 
         # Use NLI model to estimate semantic distance between each candidate response
         # and the original response
-        contradiction_index, neutral_index = (self.nli_scorer.label_mapping.index("contradiction"), self.nli_scorer.label_mapping.index("neutral"))
+        contradiction_index, neutral_index = (self.nli.label_mapping.index("contradiction"), self.nli.label_mapping.index("neutral"))
 
         semantic_distance_expectation = np.array([nli_score[0, contradiction_index] + nli_score[0, neutral_index] * (np.sqrt(2) / 2) for nli_score in nli_scores])
         semantic_squared_distance_expectation = np.array([nli_score[0, contradiction_index] + nli_score[0, neutral_index] / 2 for nli_score in nli_scores])

@@ -114,7 +114,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         self.prompts = None
         self.logprobs = None
         self.multiple_logprobs = None
-        self.clusterer = SemanticClusterer(nli_scorer=self.nli_scorer, length_normalize=length_normalize)
+        self.clusterer = SemanticClusterer(nli=self.nli, length_normalize=length_normalize)
         self.prompts_in_nli = prompts_in_nli
 
     async def generate_and_score(self, prompts: List[Union[str, List[BaseMessage]]], num_responses: int = 5, show_progress_bars: Optional[bool] = True) -> UQResult:
@@ -140,7 +140,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         """
         self.prompts = prompts
         self.num_responses = num_responses
-        self.nli_scorer.num_responses = num_responses
+        self.nli.num_responses = num_responses
 
         if hasattr(self.llm, "logprobs"):
             self.llm.logprobs = True
@@ -190,7 +190,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         self.responses = responses
         self.sampled_responses = sampled_responses
         self.num_responses = len(self.sampled_responses[0])
-        self.nli_scorer.num_responses = self.num_responses
+        self.nli.num_responses = self.num_responses
         self.logprobs = logprobs_results if logprobs_results else self.logprobs
         self.multiple_logprobs = sampled_logprobs_results if sampled_logprobs_results else self.multiple_logprobs
 

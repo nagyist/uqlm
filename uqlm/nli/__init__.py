@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from uqlm.nli.nli import NLIScorer
+from uqlm.nli.nli import NLI
 from uqlm.nli.cluster import SemanticClusterer
 
-__all__ = ["NLIScorer", "SemanticClusterer"]
+__all__ = ["NLI", "SemanticClusterer"]

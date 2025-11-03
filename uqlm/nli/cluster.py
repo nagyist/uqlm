@@ -1,12 +1,12 @@
 from collections import deque, Counter
 from typing import Any, Dict, List, Tuple
-from uqlm.nli.nli import NLIScorer
+from uqlm.nli.nli import NLI
 import numpy as np
 
 
 class SemanticClusterer:
-    def __init__(self, nli_scorer: NLIScorer = None, length_normalize: bool = False):
-        self.nli_scorer = nli_scorer
+    def __init__(self, nli: NLI = None, length_normalize: bool = False):
+        self.nli = nli
         self.length_normalize = length_normalize
 
     def evaluate(self, responses: List[str], prompt: str = None, response_probabilities: List[float] = None) -> Tuple[str, List[List[str]], List[float], Dict[Tuple[str, str], float]]:
@@ -50,7 +50,7 @@ class SemanticClusterer:
                     entailment = entailments[key]
                 else:
                     # Compute nli score and entailment if pair not yet assessed
-                    nli_result = self.nli_scorer.get_nli_results(response1=text1, response2=text2)
+                    nli_result = self.nli.get_nli_results(response1=text1, response2=text2)
                     noncontradiction_score, entailment, entailment_score = nli_result["noncontradiction_score"], nli_result["entailment"], nli_result["entailment_score"]
                     noncontradiction_scores[key], noncontradiction_scores[rev_key] = noncontradiction_score, noncontradiction_score
                     entailments[key], entailments[rev_key] = entailment, entailment
