@@ -199,8 +199,13 @@ class SemanticDensity(UncertaintyQuantifier):
 
         # Compute entailment of each candidate response by the original response,
         # conditioned on prompt
-        nli_inputs = [(f"{prompt}\n{original_response}", f"{prompt}\n{candidate}") for candidate in candidates]
-        nli_scores = [self.nli_scorer.predict(*input) for input in nli_inputs]
+        nli_scores = []
+        for candidate in candidates:
+            input = (f"{prompt}\n{original_response}", f"{prompt}\n{candidate}")
+            if input[0] + "_" + input[1] not in self.nli_scorer.probabilities:
+                nli_scores.append(self.nli_scorer.predict(input[0], input[1]))
+            else:
+                nli_scores.append(self.nli_scorer.probabilities[input[0] + "_" + input[1]])
 
         # Use NLI model to estimate semantic distance between each candidate response
         # and the original response

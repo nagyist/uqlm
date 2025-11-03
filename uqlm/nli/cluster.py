@@ -9,17 +9,17 @@ class SemanticClusterer:
         self.nli_scorer = nli_scorer
         self.length_normalize = length_normalize
 
-    def evaluate(self, responses: List[str], response_probabilities: List[float]) -> Tuple[str, List[List[str]], List[float], Dict[Tuple[str, str], float]]:
+    def evaluate(self, responses: List[str], prompt: str = None, response_probabilities: List[float] = None) -> Tuple[str, List[List[str]], List[float], Dict[Tuple[str, str], float]]:
         """
         Evaluate the cluster of responses.
         """
-        clustered_responses, cluster_indices, noncontradiction_scores, entailment_scores = self.cluster_responses(responses=responses)
+        clustered_responses, cluster_indices, noncontradiction_scores, entailment_scores = self.cluster_responses(responses=responses, prompt=prompt)
         self.nli_scores = {"noncontradiction": noncontradiction_scores, "entailment": entailment_scores}
         cluster_probabilities = self.compute_cluster_probabilities(response_probabilities=response_probabilities, cluster_indices=cluster_indices)
         best_response = self.best_response_selection(clustered_responses=clustered_responses, cluster_probabilities=cluster_probabilities)
         return best_response, clustered_responses, cluster_probabilities, cluster_indices
 
-    def cluster_responses(self, responses: List[str]) -> Any:
+    def cluster_responses(self, responses: List[str], prompt: str = None) -> Any:
         """
         This method create clusters from a list of responses based on the semantic meaning of each response.
 
@@ -27,6 +27,9 @@ class SemanticClusterer:
         ----------
         responses : list of str, default=None
             A list of model responses
+
+        prompt : str, default=None
+            A prompt for the responses.
 
         Returns
         ----------
@@ -39,13 +42,15 @@ class SemanticClusterer:
         for i in range(1, len(responses)):
             new_cluster_indicator = True
             for j, cluster in enumerate(clusters):
-                key, rev_key = (cluster[0], responses[i]), (responses[i], cluster[0])
+                text1 = f"{prompt}\n{cluster[0]}" if prompt else cluster[0]
+                text2 = f"{prompt}\n{responses[i]}" if prompt else responses[i]
+                key, rev_key = (text1, text2), (text2, text1)
                 if key in noncontradiction_scores:
                     # Do not recompute if pair already assessed
                     entailment = entailments[key]
                 else:
                     # Compute nli score and entailment if pair not yet assessed
-                    nli_result = self.nli_scorer.get_nli_results(response1=cluster[0], response2=responses[i])
+                    nli_result = self.nli_scorer.get_nli_results(response1=text1, response2=text2)
                     noncontradiction_score, entailment, entailment_score = nli_result["noncontradiction_score"], nli_result["entailment"], nli_result["entailment_score"]
                     noncontradiction_scores[key], noncontradiction_scores[rev_key] = noncontradiction_score, noncontradiction_score
                     entailments[key], entailments[rev_key] = entailment, entailment

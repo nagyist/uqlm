@@ -52,6 +52,7 @@ class NLIScorer:
         model = AutoModelForSequenceClassification.from_pretrained(nli_model_name)
         self.model = model.to(self.device) if self.device else model
         self.label_mapping = ["contradiction", "neutral", "entailment"]
+        self.probabilities = dict()
 
     def predict(self, response1: str, response2: str) -> Any:
         """
@@ -96,4 +97,5 @@ class NLIScorer:
             entailment = left_label == "entailment" or right_label == "entailment"
             avg_noncontradiction_score = ((s1 + s2) / 2)[0]
             avg_entailment_score = ((left[:, -1] + right[:, -1]) / 2)[0]
+            self.probabilities.update({f"{response1}_{response2}": left, f"{response2}_{response1}": right})
         return {"noncontradiction_score": avg_noncontradiction_score, "entailment": entailment, "entailment_score": avg_entailment_score}
