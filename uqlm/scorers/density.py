@@ -22,7 +22,7 @@ import numpy as np
 
 
 class SemanticDensity(UncertaintyQuantifier):
-    def __init__(self, llm=None, postprocessor: Any = None, device: Any = None, system_prompt: str = "You are a helpful assistant.", max_calls_per_min: Optional[int] = None, use_n_param: bool = False, sampling_temperature: float = 1.0, verbose: bool = False, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, return_responses: str = "all", length_normalize: bool = False):
+    def __init__(self, llm=None, postprocessor: Any = None, device: Any = None, system_prompt: str = "You are a helpful assistant.", max_calls_per_min: Optional[int] = None, use_n_param: bool = False, sampling_temperature: float = 1.0, verbose: bool = False, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, return_responses: str = "all", length_normalize: bool = True):
         """
         Class for computing semantic density and associated confidence scores. For more on semantic density, refer to Qiu et al.(2024) :footcite:`qiu2024semanticdensityuncertaintyquantification`.
 
@@ -69,7 +69,7 @@ class SemanticDensity(UncertaintyQuantifier):
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
 
-        length_normalize : bool, default=False
+        length_normalize : bool, default=True
             Determines whether response probabilities are length-normalized. Recommended to set as True when longer responses are expected.
         """
         super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor)

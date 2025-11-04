@@ -39,8 +39,8 @@ class SemanticEntropy(UncertaintyQuantifier):
         nli_model_name: str = "microsoft/deberta-large-mnli",
         max_length: int = 2000,
         return_responses: str = "all",
-        length_normalize: bool = False,
-        prompts_in_nli: bool = False,
+        length_normalize: bool = True,
+        prompts_in_nli: bool = True,
     ) -> None:
         """
         Class for computing discrete and token-probability-based semantic entropy and associated confidence scores. For more on semantic entropy, refer to Farquhar et al.(2024) :footcite:`farquhar2024detectinghallucinations`.
@@ -96,11 +96,11 @@ class SemanticEntropy(UncertaintyQuantifier):
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
 
-        length_normalize : bool, default=False
-            Specifies whether to length normalize the token probabilities.
+        length_normalize : bool, default=True
+            Specifies whether to length normalize the logprobs.
 
-        prompts_in_nli : bool, default=False
-            Specifies whether to use the prompts in the NLI inputs.
+        prompts_in_nli : bool, default=True
+            Specifies whether to use the prompts in the NLI inputs for semantic entropy and semantic density scorers.
         """
         super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor)
         self.nli_model_name = nli_model_name
@@ -185,7 +185,8 @@ class SemanticEntropy(UncertaintyQuantifier):
             UQResult, containing data (responses, sampled responses, and semantic entropy scores) and metadata
         """
         if self.prompts_in_nli and not prompts:
-            raise ValueError("UQLM: prompts must be provided if prompts_in_nli is True")
+            warnings.warn("UQLM: Since prompts aren't provided, setting 'prompts_in_nli' to False")
+            self.prompts_in_nli = False
         self.prompts = prompts if prompts else self.prompts
         self.responses = responses
         self.sampled_responses = sampled_responses

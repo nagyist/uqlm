@@ -33,7 +33,7 @@ SAMPLED_LOGPROBS_SCORER_NAMES = [
 
 
 class SampledLogprobsScorer(LogprobsScorer):
-    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm : BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, use_best: bool = True, prompts_in_nli: bool = False, length_normalize: bool = False):
+    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm : BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, use_best: bool = True, prompts_in_nli: bool = True, length_normalize: bool = True):
         """
         Initialize the SampledLogprobsScorer.
 
@@ -58,11 +58,11 @@ class SampledLogprobsScorer(LogprobsScorer):
             Specifies whether to swap the original response for the uncertainty-minimized response
             based on semantic entropy clusters.
 
-        prompts_in_nli : bool, default=False
-            Specifies whether to use the prompts in the NLI inputs.
+        prompts_in_nli : bool, default=True
+            Specifies whether to use the prompts in the NLI inputs for semantic entropy and semantic density scorers.
 
-        length_normalize : bool, default=False
-            Specifies whether to length normalize the NLI inputs.
+        length_normalize : bool, default=True
+            Specifies whether to length normalize the logprobs.
         """
         super().__init__()
         self.scorers = scorers

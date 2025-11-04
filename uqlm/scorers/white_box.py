@@ -28,7 +28,7 @@ ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_
 
 
 class WhiteBoxUQ(UncertaintyQuantifier):
-    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = False, prompts_in_nli: bool = False) -> None:
+    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True) -> None:
         """
         Class for computing white-box UQ confidence scores. This class offers two confidence scores, normalized
         probability :footcite:`malinin2021uncertaintyestimationautoregressivestructured` and minimum probability :footcite:`manakul2023selfcheckgptzeroresourceblackboxhallucination`.
@@ -58,11 +58,11 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             Specifies whether to use `n` parameter for `BaseChatModel`. Not compatible with all
             `BaseChatModel` classes. If used, it speeds up the generation process substantially when num_responses > 1.
 
-        prompts_in_nli : bool, default=False
-            Specifies whether to use the prompts in the NLI inputs.
+        prompts_in_nli : bool, default=True
+            Specifies whether to use the prompts in the NLI inputs for semantic entropy and semantic density scorers.
 
-        length_normalize : bool, default=False
-            Specifies whether to length normalize the NLI inputs.
+        length_normalize : bool, default=True
+            Specifies whether to length normalize the logprobs.
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.sampling_temperature = sampling_temperature
