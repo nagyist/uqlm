@@ -24,16 +24,11 @@ from uqlm.white_box.baseclass.logprobs_scorer import LogprobsScorer
 import time
 
 
-SAMPLED_LOGPROBS_SCORER_NAMES = [
-    "semantic_negentropy",
-    "semantic_density",
-    "monte_carlo_probability",
-    "consistency_and_confidence",
-]
+SAMPLED_LOGPROBS_SCORER_NAMES = ["semantic_negentropy", "semantic_density", "monte_carlo_probability", "consistency_and_confidence"]
 
 
 class SampledLogprobsScorer(LogprobsScorer):
-    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm : BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, use_best: bool = True, prompts_in_nli: bool = True, length_normalize: bool = True):
+    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm: BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, use_best: bool = True, prompts_in_nli: bool = True, length_normalize: bool = True):
         """
         Initialize the SampledLogprobsScorer.
 
@@ -42,7 +37,7 @@ class SampledLogprobsScorer(LogprobsScorer):
         scorers : List[str], default=SAMPLED_LOGPROBS_SCORER_NAMES
             Specifies which scorers to compute.
             Must be a subset of ["semantic_negentropy", "semantic_density", "monte_carlo_probability", "consistency_and_confidence"].
-        
+
         llm : BaseChatModel, default=None
             Specifies the LLM to use. Must be a BaseChatModel.
 
@@ -62,7 +57,7 @@ class SampledLogprobsScorer(LogprobsScorer):
             Specifies whether to use the prompts in the NLI inputs for semantic entropy and semantic density scorers.
 
         length_normalize : bool, default=True
-            Specifies whether to length normalize the logprobs.
+            Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, and monte_carlo_probability).
         """
         super().__init__()
         self.scorers = scorers
@@ -99,9 +94,10 @@ class SampledLogprobsScorer(LogprobsScorer):
 
     def monte_carlo_probability(self, responses: List[str], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]]) -> List[float]:
         monte_carlo_scores = []
+        score_fn = self._norm_prob if self.length_normalize else self._seq_prob
         for i in range(len(responses)):
             all_logprobs_response_i = [logprobs_results[i]] + sampled_logprobs_results[i]
-            all_sampled_sequence_probs_response_i = self._compute_single_generation_scores(all_logprobs_response_i, self._norm_prob)
+            all_sampled_sequence_probs_response_i = self._compute_single_generation_scores(all_logprobs_response_i, score_fn)
             monte_carlo_sequence_prob_i = np.mean(all_sampled_sequence_probs_response_i)
             monte_carlo_scores.append(monte_carlo_sequence_prob_i)
         return monte_carlo_scores

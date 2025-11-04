@@ -152,7 +152,6 @@ class SemanticDensity(UncertaintyQuantifier):
         self.logprobs = logprobs_results if logprobs_results else self.logprobs
         self.multiple_logprobs = sampled_logprobs_results if sampled_logprobs_results else self.multiple_logprobs
 
-
         n_prompts = len(self.responses)
         semantic_density = [None] * n_prompts
 

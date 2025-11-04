@@ -241,14 +241,14 @@ class SemanticEntropy(UncertaintyQuantifier):
         """
         if self.verbose and i is not None:
             print("Question No. - ", i + 1)
-        
+
         # Compute response probabilities
         tokenprob_response_probabilities, response_probabilities = self.clusterer.compute_response_probabilities(logprobs_results=logprobs_results, num_responses=len(candidates))
-        
+
         # Compute Clusters and NLI scores``
         tmp = self.prompts[i] if self.prompts_in_nli else None
         best_response, clustered_responses, cluster_probabilities, cluster_indices = self.clusterer.evaluate(responses=candidates, prompt=tmp, response_probabilities=response_probabilities)
-        
+
         # Compute discrete semantic entropy
         discrete_semantic_entropy = self._compute_semantic_entropy(cluster_probabilities=cluster_probabilities)
 
