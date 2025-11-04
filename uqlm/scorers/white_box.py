@@ -28,7 +28,7 @@ ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_
 
 
 class WhiteBoxUQ(UncertaintyQuantifier):
-    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False) -> None:
+    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True) -> None:
         """
         Class for computing white-box UQ confidence scores. This class offers two confidence scores, normalized
         probability :footcite:`malinin2021uncertaintyestimationautoregressivestructured` and minimum probability :footcite:`manakul2023selfcheckgptzeroresourceblackboxhallucination`.
@@ -57,10 +57,18 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         use_n_param : bool, default=False
             Specifies whether to use `n` parameter for `BaseChatModel`. Not compatible with all
             `BaseChatModel` classes. If used, it speeds up the generation process substantially when num_responses > 1.
+
+        prompts_in_nli : bool, default=True
+            Specifies whether to use the prompts in the NLI inputs for semantic entropy and semantic density scorers.
+
+        length_normalize : bool, default=True
+            Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, and monte_carlo_probability).
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.sampling_temperature = sampling_temperature
         self.top_k_logprobs = None  # used only if top_logprobs scorers used
+        self.length_normalize = length_normalize
+        self.prompts_in_nli = prompts_in_nli
         self._validate_scorers(scorers, top_k_logprobs)
         self.multiple_logprobs = None
 
@@ -98,7 +106,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         if self.sampled_logprobs_scorer_names:
             self.llm.logprobs = True  # reset attribute to True
             sampled_responses = await self.generate_candidate_responses(prompts=prompts, num_responses=num_responses, progress_bar=self.progress_bar)
-        result = await self.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=self.logprobs, sampled_logprobs_results=self.multiple_logprobs)
+        result = await self.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=self.logprobs, sampled_logprobs_results=self.multiple_logprobs, show_progress_bars=show_progress_bars)
 
         self._stop_progress_bar()
         self.progress_bar = None  # if re-run ensure the same progress object is not used
@@ -147,7 +155,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             top_logprobs_scores_dict = self.top_logprobs_scorer.evaluate(logprobs_results)
             data.update(top_logprobs_scores_dict)
         if self.sampled_logprobs_scorer_names:
-            sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
+            sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses, prompts=prompts, progress_bar=self.progress_bar)
             data.update(sampled_logprobs_scores_dict)
         if "p_true" in self.scorers:
             p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
@@ -176,6 +184,6 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             self.top_k_logprobs = top_k_logprobs
             beta_warning("Scoring with top_logprobs is in beta. Please use it with caution as it may change in future releases.")
         if self.sampled_logprobs_scorer_names:
-            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names)
+            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize)
         if "p_true" in self.scorers:
             self.p_true_scorer = PTrueScorer(llm=self.llm, max_calls_per_min=self.max_calls_per_min)

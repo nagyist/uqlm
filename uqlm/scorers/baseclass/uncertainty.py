@@ -21,7 +21,7 @@ from rich.progress import Progress, TextColumn
 from rich.errors import LiveError
 
 from uqlm.utils.response_generator import ResponseGenerator
-from uqlm.nli.nli import NLIScorer
+from uqlm.nli.nli import NLI
 from uqlm.judges.judge import LLMJudge
 from uqlm.utils.display import ConditionalBarColumn, ConditionalTimeElapsedColumn, ConditionalTextColumn, ConditionalSpinnerColumn
 
@@ -173,8 +173,8 @@ class UncertaintyQuantifier:
             return LLMJudge(llm=llm)
 
     def _setup_nli(self, nli_model_name: Any) -> None:
-        """Set up NLI scorer"""
-        self.nli_scorer = NLIScorer(nli_model_name=self.nli_model_name, device=self.device, max_length=self.max_length, verbose=self.verbose)
+        """Set up NLI model"""
+        self.nli = NLI(nli_model_name=nli_model_name, device=self.device, max_length=self.max_length, verbose=self.verbose)
 
     def _update_best(self, best_responses: List[str], include_logprobs: bool = True) -> None:
         """Updates best"""
