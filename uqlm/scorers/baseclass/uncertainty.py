@@ -27,9 +27,9 @@ from uqlm.utils.display import ConditionalBarColumn, ConditionalTimeElapsedColum
 
 DEFAULT_BLACK_BOX_SCORERS = ["semantic_negentropy", "noncontradiction", "exact_match", "cosine_sim"]
 
-BLACK_BOX_SCORERS = DEFAULT_BLACK_BOX_SCORERS + ["bert_score"]
+BLACK_BOX_SCORERS = DEFAULT_BLACK_BOX_SCORERS + ["bert_score", "entailment"]
 
-WHITE_BOX_SCORERS = ["normalized_probability", "min_probability"]
+DEFAULT_WHITE_BOX_SCORERS = ["normalized_probability", "min_probability"]
 
 
 class UncertaintyQuantifier:
@@ -70,7 +70,7 @@ class UncertaintyQuantifier:
         self.max_calls_per_min = max_calls_per_min
         self.use_n_param = use_n_param
         self.black_box_names = BLACK_BOX_SCORERS
-        self.white_box_names = WHITE_BOX_SCORERS
+        self.white_box_names = DEFAULT_WHITE_BOX_SCORERS
         self.default_black_box_names = DEFAULT_BLACK_BOX_SCORERS
         self.progress_bar = None
         self.raw_responses = None

@@ -64,10 +64,12 @@ class UQEnsemble(UncertaintyQuantifier):
             A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
             relevant parameters to the constructor of their `llm` object.
 
-        scorers : List containing instances of BaseChatModel, LLMJudge, black-box scorer names from ['semantic_negentropy', 'noncontradiction','exact_match', 'bert_score', 'cosine_sim'], or white-box scorer names from ["normalized_probability", "min_probability"] default=None
-            Specifies which UQ components to include. If None, defaults to the off-the-shelf BS Detector ensemble by
-            Chen and Mueller (2023) :footcite:`chen2023quantifyinguncertaintyanswerslanguage` which uses components
-            ["noncontradiction", "exact_match", llm] with respective weights of [0.56, 0.14, 0.3]
+        scorers : List[Union[str, BaseChatModel]] default=None
+            Specifies which UQ components to include. List containing instances of BaseChatModel, LLMJudge, black-box scorer names from 
+            ['semantic_negentropy', 'noncontradiction','exact_match', 'bert_score', 'cosine_sim'], or white-box scorer names from 
+            ["normalized_probability", "min_probability"] (other white-box scorers not yet supported). If None, defaults to the 
+            off-the-shelf BS Detector ensemble by Chen and Mueller (2023) :footcite:`chen2023quantifyinguncertaintyanswerslanguage` 
+            which uses components ["noncontradiction", "exact_match", llm] with respective weights of [0.56, 0.14, 0.3]
 
         device : str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'noncontradiction'
