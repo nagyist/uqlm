@@ -46,10 +46,8 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             Optional argument for user to provide custom system prompt. If prompts are list of strings and system_prompt is None,
             defaults to "You are a helpful assistant."
 
-        scorers : subset of {
-            "normalized_probability", "min_probability", "sequence_probability", "max_token_negentropy", "mean_token_negentropy", "probability_margin", "monte_carlo_negentropy", "consistency_and_confidence"
-        }, default=None
-            Specifies which black box (consistency) scorers to include. If None, defaults to all.
+        scorers : List[str], default=None
+            Specifies which white-box UQ scorers to include. Must be subset of ["normalized_probability", "min_probability", "sequence_probability", "max_token_negentropy", "mean_token_negentropy", "probability_margin", "monte_carlo_negentropy", "consistency_and_confidence", "semantic_negentropy", "semantic_density", "p_true"]. If None, defaults to ["normalized_probability", "min_probability"].
 
         sampling_temperature : float, default=1.0
             The 'temperature' parameter for llm model to generate sampled LLM responses. Must be greater than 0.

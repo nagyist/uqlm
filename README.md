@@ -32,7 +32,7 @@ UQLM provides a suite of response-level scorers for quantifying the uncertainty 
 | Scorer Type            | Added Latency                                      | Added Cost                               | Compatibility                                             | Off-the-Shelf / Effort                                  |
 |------------------------|----------------------------------------------------|------------------------------------------|-----------------------------------------------------------|---------------------------------------------------------|
 | [Black-Box Scorers](#black-box-scorers-consistency-based)      | ⏱️ Medium-High (multiple generations & comparisons)           | 💸 High (multiple LLM calls)             | 🌍 Universal (works with any LLM)                         | ✅ Off-the-shelf |
-| [White-Box Scorers](#white-box-scorers-token-probability-based)      | ⚡ Minimal (single-generation scorers) - ⏱️ High (multi-generation scorers)   | ✔️ None (single-generation scorers) - 💸 High (multi-generation scorers)             | 🔒 Limited (requires access to token probabilities)       | ✅ Off-the-shelf            |
+| [White-Box Scorers](#white-box-scorers-token-probability-based)      | ⚡ Minimal (single-generation scorers) to ⏱️ High (multi-generation scorers)   | ✔️ None (single-generation scorers) to 💸 High (multi-generation scorers)             | 🔒 Limited (requires access to token probabilities)       | ✅ Off-the-shelf            |
 | [LLM-as-a-Judge Scorers](#llm-as-a-judge-scorers) | ⏳ Low-Medium (additional judge calls add latency)    | 💵 Low-High (depends on selected judges)| 🌍 Universal (any LLM can serve as judge)                     |✅  Off-the-shelf        |
 | [Ensemble Scorers](#ensemble-scorers)       | 🔀 Flexible (combines various scorers)       | 🔀 Flexible (combines various scorers)      | 🔀 Flexible (combines various scorers)                    | ✅  Off-the-shelf (beginner-friendly); 🛠️ Can be tuned (best for advanced users)    |
 
@@ -109,7 +109,7 @@ results.to_df()
   <img src="https://raw.githubusercontent.com/cvs-health/uqlm/main/assets/images/white_box_output2.png" />
 </p>
 
-Again, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used in place of `ChatVertexAI`. For a more detailed demo, refer to our [White-Box UQ Demo](./examples/white_box_demo.ipynb).
+Again, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used in place of `ChatVertexAI`. For more detailed examples, refer to our demo notebooks on [Single-Generation White-Box UQ](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_single_generation_demo.ipynb) and/or [Multi-Generation White-Box UQ](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_multi_generation_demo.ipynb).
 
 
 **Single-Generation Scorers (minimal latency, zero extra cost):**
@@ -233,7 +233,7 @@ Explore the following demo notebooks to see how to use UQLM for various hallucin
 
 - [Black-Box Uncertainty Quantification](https://github.com/cvs-health/uqlm/blob/main/examples/black_box_demo.ipynb): A notebook demonstrating hallucination detection with black-box (consistency) scorers.
 - [White-Box Uncertainty Quantification (Single-Generation)](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_single_generation_demo.ipynb): A notebook demonstrating hallucination detection with white-box (token probability-based) scorers requiring only a single generation per response (fastest and cheapest).
-- [White-Box Uncertainty Quantification (Multi-Generation)](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_multi_generation_demo.ipynb): A notebook demonstrating hallucination detection with white-box (token probability-based) scorers requiring only a single generation per response (slower and more expensive, but higher performance).
+- [White-Box Uncertainty Quantification (Multi-Generation)](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_multi_generation_demo.ipynb): A notebook demonstrating hallucination detection with white-box (token probability-based) scorers requiring multiple generations per response (slower and more expensive, but higher performance).
 - [LLM-as-a-Judge](https://github.com/cvs-health/uqlm/blob/main/examples/judges_demo.ipynb): A notebook demonstrating hallucination detection with LLM-as-a-Judge.
 - [Tunable UQ Ensemble](https://github.com/cvs-health/uqlm/blob/main/examples/ensemble_tuning_demo.ipynb): A notebook demonstrating hallucination detection with a tunable ensemble of UQ scorers ([Bouchard & Chauhan, 2025](https://arxiv.org/abs/2504.19254)).
 - [Off-the-Shelf UQ Ensemble](https://github.com/cvs-health/uqlm/blob/main/examples/ensemble_off_the_shelf_demo.ipynb): A notebook demonstrating hallucination detection using BS Detector ([Chen & Mueller, 2023](https://arxiv.org/abs/2308.16175)) off-the-shelf ensemble.
