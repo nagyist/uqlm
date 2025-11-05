@@ -40,6 +40,20 @@
       "streaming": false,
       "use_previous_response_id": false,
       "verbose": false
+    },
+    "judge_2": {
+      "class_name": "AzureChatOpenAI",
+      "module": "langchain_openai.chat_models.azure",
+      "deployment_name": "gpt-4o",
+      "logprobs": true,
+      "model_version": "",
+      "n": 5,
+      "openai_api_type": "azure",
+      "openai_api_version": "2024-02-15-preview",
+      "output_version": "v0",
+      "streaming": false,
+      "use_previous_response_id": false,
+      "verbose": false
     }
   }
 }
