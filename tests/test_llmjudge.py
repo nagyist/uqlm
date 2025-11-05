@@ -134,22 +134,10 @@ def test_extract_answers_batch(mock_llm, test_data):
             assert actual == expected, f"Batch extraction failed for {template_name} item {i}: Expected {expected}, got {actual}"
 
 
-def test_custom_validate_inputs1(mock_llm):
-    with pytest.raises(ValueError) as value_error:
-        LLMJudge(llm=mock_llm, template_ques_ans="template{}{}", keywords_to_scores_dict={"1": ["1"]})
-    assert "keys in keywords_to_scores_dict must be floats" == str(value_error.value)
-
-
-def test_custom_validate_inputs2(mock_llm):
-    with pytest.raises(ValueError) as value_error:
-        LLMJudge(llm=mock_llm, template_ques_ans="template{}{}", keywords_to_scores_dict={1.0: 1})
-    assert "values in keywords_to_scores_dict must be lists of strings" == str(value_error.value)
-
-
 def test_custom_validate_inputs3(mock_llm):
     with pytest.raises(ValueError) as value_error:
         LLMJudge(llm=mock_llm, scoring_template="wrong")
-    assert "If provided, scoring_template must be one of 'true_false_uncertain', 'true_false', 'continuous', 'likert'. Otherwise, valid template_ques_ans and keywords_to_scores_dict must be provided" == str(value_error.value)
+    assert "If provided, scoring_template must be one of 'true_false_uncertain', 'true_false', 'continuous', 'likert'" == str(value_error.value)
 
 
 def test_parse_structured_response_malformed(mock_llm):

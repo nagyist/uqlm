@@ -23,7 +23,7 @@ from uqlm.utils.results import UQResult
 
 
 class LLMPanel(UncertaintyQuantifier):
-    def __init__(self, judges: List[Union[LLMJudge, BaseChatModel]], llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scoring_templates: Optional[List[str]] = None, explanations: bool = False) -> None:
+    def __init__(self, judges: List[Union[LLMJudge, BaseChatModel]], llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scoring_templates: Optional[List[str]] = None, explanations: bool = False, additional_context: Optional[str] = None) -> None:
         """
         Class for aggregating multiple instances of LLMJudge using min, max, or majority voting
 
@@ -53,6 +53,9 @@ class LLMPanel(UncertaintyQuantifier):
         explanations : bool, default=False
             If True, judges will be instructed to provide explanations along with scores.
             When enabled, explanation columns will be included in the output DataFrame.
+
+        additional_context : str or None, default=None
+            Optional argument to provide additional context to inform LLM-as-a-Judge evaluations.
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.explanations = explanations
@@ -65,7 +68,7 @@ class LLMPanel(UncertaintyQuantifier):
         self.judges = []
         for judge, template in zip(judges, self.scoring_templates):
             if isinstance(judge, BaseChatModel):
-                judge = LLMJudge(llm=judge, max_calls_per_min=max_calls_per_min, scoring_template=template)
+                judge = LLMJudge(llm=judge, max_calls_per_min=max_calls_per_min, scoring_template=template, additional_context=additional_context)
             elif not isinstance(judge, LLMJudge):
                 raise ValueError("judges must be a list containing instances of either LLMJudge or BaseChatModel")
             self.judges.append(judge)

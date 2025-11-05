@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from uqlm.black_box.bert import BertScorer
+from uqlm.white_box.single_logprobs import SingleLogprobsScorer, SINGLE_LOGPROBS_SCORER_NAMES
+from uqlm.white_box.top_logprobs import TopLogprobsScorer, TOP_LOGPROBS_SCORER_NAMES
+from uqlm.white_box.sampled_logprobs import SampledLogprobsScorer, SAMPLED_LOGPROBS_SCORER_NAMES
+from uqlm.white_box.p_true import PTrueScorer
 
-from uqlm.black_box.bleurt import BLEURTScorer  # deprecated in v0.2.0
-from uqlm.black_box.cosine import CosineScorer
-from uqlm.black_box.match import MatchScorer
-from uqlm.black_box.consistency import ConsistencyScorer
-
-__all__ = ["BertScorer", "CosineScorer", "BLEURTScorer", "MatchScorer", "ConsistencyScorer"]
+__all__ = ["SingleLogprobsScorer", "TopLogprobsScorer", "SampledLogprobsScorer", "PTrueScorer", "SINGLE_LOGPROBS_SCORER_NAMES", "TOP_LOGPROBS_SCORER_NAMES", "SAMPLED_LOGPROBS_SCORER_NAMES"]

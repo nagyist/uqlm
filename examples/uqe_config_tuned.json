@@ -1,23 +1,21 @@
 {
   "weights": [
-    0.00046109310833603593,
-    0.45623273900760736,
-    0.10385167603771311,
-    0.4394175329302301,
-    3.6958916113473975e-05
+    0.0009671121179852439,
+    0.6562971985477949,
+    0.3075076665757106,
+    0.03522802275850924
   ],
-  "thresh": 0.51,
+  "thresh": 0.79,
   "components": [
     "exact_match",
     "noncontradiction",
     "normalized_probability",
-    "judge_1",
-    "judge_2"
+    "judge_1"
   ],
   "llm_config": {
     "class_name": "AzureChatOpenAI",
     "module": "langchain_openai.chat_models.azure",
-    "deployment_name": "gpt-4o",
+    "deployment_name": "gpt-4o-mini",
     "logprobs": true,
     "model_version": "",
     "n": 5,
@@ -30,20 +28,17 @@
   },
   "llm_scorers": {
     "judge_1": {
-      "class_name": "ChatVertexAI",
-      "module": "langchain_google_vertexai.chat_models",
-      "default_metadata": [],
-      "endpoint_version": "v1beta1",
-      "full_model_name": "projects/anbc-dev/locations/us-central1/publishers/google/models/gemini-2.5-flash",
-      "location": "us-central1",
-      "logprobs": false,
-      "max_retries": 6,
-      "model_name": "gemini-2.5-flash",
-      "n": 1,
-      "perform_literal_eval_on_string_raw_content": true,
-      "project": "anbc-dev",
-      "request_parallelism": 5,
+      "class_name": "AzureChatOpenAI",
+      "module": "langchain_openai.chat_models.azure",
+      "deployment_name": "gpt-4o-mini",
+      "logprobs": true,
+      "model_version": "",
+      "n": 5,
+      "openai_api_type": "azure",
+      "openai_api_version": "2024-02-15-preview",
+      "output_version": "v0",
       "streaming": false,
+      "use_previous_response_id": false,
       "verbose": false
     },
     "judge_2": {
