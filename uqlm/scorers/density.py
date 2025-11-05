@@ -17,7 +17,7 @@ from uqlm.utils.results import UQResult
 from typing import Any, Optional, List
 import time
 from uqlm.nli.cluster import SemanticClusterer
-from typing import Any, Optional, List, Dict
+from typing import Dict
 import numpy as np
 
 
