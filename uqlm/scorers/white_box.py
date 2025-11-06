@@ -47,7 +47,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             defaults to "You are a helpful assistant."
 
         scorers : subset of {
-            "normalized_probability", "min_probability", "sequence_probability", "max_token_negentropy", "mean_token_negentropy", "probability_margin", "monte_carlo_negentropy", "consistency_and_confidence"
+            "normalized_probability", "min_probability", "sequence_probability", "max_token_negentropy", "mean_token_negentropy", "probability_margin", "monte_carlo_probability", "consistency_and_confidence"
         }, default=None
             Specifies which black box (consistency) scorers to include. If None, defaults to all.
 
@@ -83,7 +83,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             input type List[List[BaseMessage]], refer to https://python.langchain.com/docs/concepts/messages/#langchain-messages for support.
 
         num_responses : int, default=5
-            The number of sampled responses used to multi-generation white-box scorers. Only applies to monte_carlo_negentropy and consistency_and_confidence scorers.
+            The number of sampled responses used to multi-generation white-box scorers. Only applies to monte_carlo_probability and consistency_and_confidence scorers.
 
         show_progress_bars : bool, default=True
             If True, displays a progress bar while generating and scoring responses
@@ -125,14 +125,14 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             A list of input prompts for the model. Required only for "p_true" scorer.
 
         responses : list of str, default=None
-            A list of model responses for the prompts. Required for "p_true", "monte_carlo_negentropy" and "consistency_and_confidence" scorers.
+            A list of model responses for the prompts. Required for "p_true", "monte_carlo_probability" and "consistency_and_confidence" scorers.
 
         sampled_responses : list of list of str, default=None
             A list of lists of sampled LLM responses for each prompt. These will be used to compute consistency scores by comparing to
-            the corresponding response from `responses`. Required only for "monte_carlo_negentropy" and "consistency_and_confidence" scorers.
+            the corresponding response from `responses`. Required only for "monte_carlo_probability" and "consistency_and_confidence" scorers.
 
         sampled_logprobs_results : list of lists of logprobs_result
-            List of list of dictionaries, each returned by BaseChatModel.agenerate corresponding to sampled_responses. Required only for "monte_carlo_negentropy" and "consistency_and_confidence" scorers.
+            List of list of dictionaries, each returned by BaseChatModel.agenerate corresponding to sampled_responses. Required only for "monte_carlo_probability" and "consistency_and_confidence" scorers.
 
         show_progress_bars : bool, default=True
             If True, displays a progress bar while scoring responses
