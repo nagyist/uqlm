@@ -14,7 +14,7 @@
 
 import gc
 import pytest
-from uqlm.nli.nli import NLIScorer
+from uqlm.nli.nli import NLI
 
 
 @pytest.fixture
@@ -29,12 +29,12 @@ def text2():
 
 @pytest.fixture
 def nli_model():
-    return NLIScorer()
+    return NLI()
 
 
 @pytest.fixture
 def nli_model_cpu():
-    return NLIScorer(verbose=True, device="cpu")
+    return NLI(verbose=True, device="cpu")
 
 
 @pytest.mark.flaky(reruns=3)
