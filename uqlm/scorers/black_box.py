@@ -182,13 +182,13 @@ class BlackBoxUQ(UncertaintyQuantifier):
             if scorer_key in ["semantic_negentropy", "semantic_sets_confidence"]:
                 if "semantic_negentropy" in self.scores_dict or "semantic_sets_confidence" in self.scores_dict:
                     continue
-                    
+
                 self.scorer_objects["semantic_negentropy"].progress_bar = self.progress_bar
                 se_tmp = self.scorer_objects["semantic_negentropy"].score(responses=self.responses, sampled_responses=self.sampled_responses, _display_header=False)
                 if "semantic_negentropy" in self.scorer_names:
                     self.scores_dict["semantic_negentropy"] = [1 - s for s in self.scorer_objects["semantic_negentropy"]._normalize_entropy(se_tmp.data["discrete_entropy_values"])]  # Convert to confidence score
                 if "semantic_sets_confidence" in self.scorer_names:
-                    self.scores_dict["semantic_sets_confidence"] = [1 - (s - 1) / (self.num_responses - 1) for s in se_tmp.data["num_semantic_sets"]]  # Convert to confidence score    
+                    self.scores_dict["semantic_sets_confidence"] = [1 - (s - 1) / (self.num_responses - 1) for s in se_tmp.data["num_semantic_sets"]]  # Convert to confidence score
                 available_nli_scores = self.scorer_objects[scorer_key].clusterer.nli_scores
                 if self.use_best:
                     self._update_best(se_tmp.data["responses"], include_logprobs=False)
@@ -228,7 +228,7 @@ class BlackBoxUQ(UncertaintyQuantifier):
             elif scorer in ["noncontradiction", "entailment"]:
                 consistency.append(scorer)
             elif scorer in ["semantic_negentropy", "semantic_sets_confidence"]:
-                if not "semantic_negentropy" in self.scorer_objects:
+                if "semantic_negentropy" not in self.scorer_objects:
                     self.scorer_objects["semantic_negentropy"] = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best)
             else:
                 if scorer == "bleurt":

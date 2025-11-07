@@ -193,7 +193,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         self.nli.num_responses = self.num_responses
         self.logprobs = logprobs_results if logprobs_results else self.logprobs
         self.multiple_logprobs = sampled_logprobs_results if sampled_logprobs_results else self.multiple_logprobs
-        
+
         self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars and _display_header)
 
@@ -251,7 +251,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         tmp = self.prompts[i] if self.prompts_in_nli else None
         best_response, clustered_responses, cluster_probabilities, cluster_indices = self.clusterer.evaluate(responses=candidates, prompt=tmp, response_probabilities=response_probabilities)
         num_semantic_sets = len(cluster_probabilities)
-        
+
         # Compute discrete semantic entropy
         discrete_semantic_entropy = self._compute_semantic_entropy(cluster_probabilities=cluster_probabilities)
 
