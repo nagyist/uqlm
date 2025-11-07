@@ -88,7 +88,8 @@ class SampledLogprobsScorer(LogprobsScorer):
 
     def compute_consistency_confidence(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], progress_bar: Optional[Progress] = None) -> List[float]:
         cosine_scores = CosineScorer().evaluate(responses=responses, sampled_responses=sampled_responses, progress_bar=progress_bar)
-        response_probs = self._compute_single_generation_scores(logprobs_results, self._norm_prob)
+        score_fn = self._norm_prob if self.length_normalize else self._seq_prob
+        response_probs = self._compute_single_generation_scores(logprobs_results, score_fn)
         cocoa_scores = [cs * rp for cs, rp in zip(cosine_scores, response_probs)]
         return cocoa_scores
 

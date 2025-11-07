@@ -51,11 +51,9 @@ class BlackBoxUQ(UncertaintyQuantifier):
             A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
             relevant parameters to the constructor of their `llm` object.
 
-        scorers : subset of {
-            'semantic_negentropy', 'noncontradiction', 'exact_match', 'bert_score', 'cosine_sim', 'entailment'
-        }, default=None
+        scorers : List[str], default=None
             Specifies which black box (consistency) scorers to include. If None, defaults to
-            ["semantic_negentropy", "noncontradiction", "exact_match", "cosine_sim", "entailment"]. The bleurt
+            ["semantic_negentropy", "noncontradiction", "exact_match", "cosine_sim", "entailment", "semantic_sets_confidence"]. The bleurt
             scorer is deprecated as of v0.2.0.
 
         device: str or torch.device input or torch.device object, default="cpu"
@@ -114,8 +112,9 @@ class BlackBoxUQ(UncertaintyQuantifier):
         self.nli_model_name = nli_model_name
         self.sentence_transformer = sentence_transformer
         self.return_responses = return_responses
+        self.scorer_names = scorers
         self._validate_scorers(scorers)
-        self.use_nli = ("semantic_negentropy" in self.scorers) or ("noncontradiction" in self.scorers)
+        self.use_nli = set(["semantic_negentropy", "noncontradiction", "entailment", "semantic_sets_confidence"]) & set(self.scorer_names)
         if self.use_nli:
             self._setup_nli(nli_model_name)
 
@@ -183,9 +182,16 @@ class BlackBoxUQ(UncertaintyQuantifier):
 
         available_nli_scores = dict()
         for scorer_key in self.scorer_objects:
-            if scorer_key == "semantic_negentropy":
-                se_tmp = self.scorer_objects[scorer_key].score(responses=self.responses, sampled_responses=self.sampled_responses, show_progress_bars=self.progress_bar)
-                self.scores_dict[scorer_key] = [1 - s for s in self.scorer_objects[scorer_key]._normalize_entropy(se_tmp.data["discrete_entropy_values"])]  # Convert to confidence score
+            if scorer_key in ["semantic_negentropy", "semantic_sets_confidence"]:
+                if "semantic_negentropy" in self.scores_dict or "semantic_sets_confidence" in self.scores_dict:
+                    continue
+                    
+                self.scorer_objects["semantic_negentropy"].progress_bar = self.progress_bar
+                se_tmp = self.scorer_objects["semantic_negentropy"].score(responses=self.responses, sampled_responses=self.sampled_responses, _display_header=False)
+                if "semantic_negentropy" in self.scorer_names:
+                    self.scores_dict["semantic_negentropy"] = [1 - s for s in self.scorer_objects["semantic_negentropy"]._normalize_entropy(se_tmp.data["discrete_entropy_values"])]  # Convert to confidence score
+                if "semantic_sets_confidence" in self.scorer_names:
+                    self.scores_dict["semantic_sets_confidence"] = [1 - (s - 1) / (self.num_responses - 1) for s in se_tmp.data["num_semantic_sets"]]  # Convert to confidence score    
                 available_nli_scores = self.scorer_objects[scorer_key].clusterer.nli_scores
                 if self.use_best:
                     self._update_best(se_tmp.data["responses"], include_logprobs=False)
@@ -224,14 +230,15 @@ class BlackBoxUQ(UncertaintyQuantifier):
                 self.scorer_objects["cosine_sim"] = CosineScorer(transformer=self.sentence_transformer)
             elif scorer in ["noncontradiction", "entailment"]:
                 consistency.append(scorer)
-            elif scorer == "semantic_negentropy":
-                self.scorer_objects["semantic_negentropy"] = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best)
+            elif scorer in ["semantic_negentropy", "semantic_sets_confidence"]:
+                if not "semantic_negentropy" in self.scorer_objects:
+                    self.scorer_objects["semantic_negentropy"] = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best)
             else:
                 if scorer == "bleurt":
                     print("bleurt is deprecated as of v0.2.0")
                 raise ValueError(
                     """
-                    scorers must be one of ['semantic_negentropy', 'noncontradiction', 'exact_match', 'bert_score', 'cosine_sim']
+                    scorers must be one of ['semantic_negentropy', 'noncontradiction', 'exact_match', 'bert_score', 'cosine_sim', 'semantic_sets_confidence', 'entailment']
                     """
                 )
         if consistency:

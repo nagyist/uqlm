@@ -27,7 +27,7 @@ from uqlm.utils.display import ConditionalBarColumn, ConditionalTimeElapsedColum
 
 DEFAULT_BLACK_BOX_SCORERS = ["semantic_negentropy", "noncontradiction", "exact_match", "cosine_sim"]
 
-BLACK_BOX_SCORERS = DEFAULT_BLACK_BOX_SCORERS + ["bert_score", "entailment"]
+BLACK_BOX_SCORERS = DEFAULT_BLACK_BOX_SCORERS + ["bert_score", "entailment", "semantic_sets_confidence"]
 
 DEFAULT_WHITE_BOX_SCORERS = ["normalized_probability", "min_probability"]
 
