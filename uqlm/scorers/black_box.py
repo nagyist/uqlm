@@ -114,9 +114,6 @@ class BlackBoxUQ(UncertaintyQuantifier):
         self.return_responses = return_responses
         self.scorer_names = scorers
         self._validate_scorers(scorers)
-        self.use_nli = set(["semantic_negentropy", "noncontradiction", "entailment", "semantic_sets_confidence"]) & set(self.scorer_names)
-        if self.use_nli:
-            self._setup_nli(nli_model_name)
 
     async def generate_and_score(self, prompts: List[Union[str, List[BaseMessage]]], num_responses: int = 5, show_progress_bars: Optional[bool] = True) -> UQResult:
         """
