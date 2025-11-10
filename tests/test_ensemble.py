@@ -38,6 +38,7 @@ MOCKED_SAMPLED_RESPONSES = data["sampled_responses"]
 MOCKED_JUDGE_SCORES = data["judge_1"]
 MOCKED_LOGPROBS = metadata["logprobs"]
 
+
 @pytest.fixture
 def mock_llm():
     mock_llm_instance = MagicMock(spec=AzureChatOpenAI)
@@ -50,6 +51,7 @@ def mock_llm():
     mock_llm_instance.deployment_name = "YOUR-DEPLOYMENT"
     mock_llm_instance.logprobs = MOCKED_LOGPROBS
     return mock_llm_instance
+
 
 def test_validate_grader(mock_llm):
     uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match"])
@@ -102,7 +104,6 @@ async def test_ensemble(monkeypatch, mock_llm):
     mock_scorer = MagicMock(spec=BaseChatModel)
     mock_scorer.score = AsyncMock(return_value=UQResult({"data": {"judge_1": MOCKED_JUDGE_SCORES}}))
     uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction", "min_probability", mock_scorer])
-    
 
     async def mock_generate_original_responses(*args, **kwargs):
         uqe.logprobs = MOCKED_LOGPROBS
@@ -150,7 +151,7 @@ async def test_ensemble(monkeypatch, mock_llm):
         result = await uqe.tune(prompts=PROMPTS, ground_truth_answers=[PROMPTS[0]] + [" "] * len(PROMPTS[:-1]), grader_function=lambda response, answer: response == answer, show_progress_bars=show_progress_bars)
         assert result.metadata["thresh"] == tune_results["thresh"]
 
-    @unittest.skipIf(os.getenv("CI"), "Skipping test in CI environment")
+    #@unittest.skipIf(os.getenv("CI"), "Skipping test in CI environment")
     async def test_tune_with_default_grader():
         result = await uqe.tune(prompts=PROMPTS, ground_truth_answers=PROMPTS, show_progress_bars=False)
         assert result.metadata["thresh"] == tune_results["thresh"]
