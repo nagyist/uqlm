@@ -81,6 +81,7 @@ async def test_generate_and_score_mocked():
 
     result = await semantic_density.generate_and_score(prompts, num_responses=2)
 
+    assert isinstance(result, UQResult)
     assert semantic_density.prompts == prompts
     assert semantic_density.num_responses == 2
     semantic_density.generate_original_responses.assert_called_once_with(prompts, progress_bar=semantic_density.progress_bar)
