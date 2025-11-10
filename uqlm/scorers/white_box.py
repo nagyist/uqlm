@@ -60,7 +60,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             Specifies whether to use the prompts in the NLI inputs for semantic entropy and semantic density scorers.
 
         length_normalize : bool, default=True
-            Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, and monte_carlo_probability).
+            Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, monte_carlo_probability, and consistency_and_confidence).
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.sampling_temperature = sampling_temperature
