@@ -167,7 +167,7 @@ class SemanticDensity(UncertaintyQuantifier):
         self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars)
         if self.progress_bar:
-            progress_task = self.progress_bar.add_task("- Scoring responses with NLI...", total=n_prompts)
+            progress_task = self.progress_bar.add_task("  - Scoring responses with NLI...", total=n_prompts)
 
         for i in range(n_prompts):
             _process_i(i)
