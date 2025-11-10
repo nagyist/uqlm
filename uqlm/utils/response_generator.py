@@ -208,6 +208,7 @@ class ResponseGenerator:
     async def agenerate_with_top_logprobs(self, messages: List[BaseMessage], count: int) -> Any:
         """Use agenerate method with top_logprobs configured"""
         logprobs = [None] * count
+        result = None
         if "openai" in self.llm.__str__().lower():
             result = await self.llm.agenerate([messages], logprobs=True, top_logprobs=self.top_k_logprobs)
         elif "google" in self.llm.__str__().lower() or "gemini" in self.llm.str().lower():
@@ -222,6 +223,8 @@ class ResponseGenerator:
                     result = await self.llm.agenerate([messages])
                 except Exception:
                     pass
+        if result is None:  # if all attempts fail
+            return {"logprobs": [None] * count, "responses": []}
         logprobs = self._extract_logprobs(logprobs=logprobs, result=result, count=count)
         return {"logprobs": logprobs, "responses": [result.generations[0][i].text for i in range(count)]}
 
@@ -237,7 +240,7 @@ class ResponseGenerator:
             else:
                 warnings.warn("Model did not provide logprobs in API response. White-box scores for this response may be set to np.nan.")
                 logprobs[i] = np.nan
-            return logprobs
+        return logprobs
 
     @staticmethod
     def _enforce_strings(texts: List[Any]) -> List[str]:
