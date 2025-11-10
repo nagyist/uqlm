@@ -37,7 +37,7 @@ async def test_semanticdensity(monkeypatch):
     MOCKED_SAMPLED_RESPONSES = data["sampled_responses"]
 
     # Initiate SemanticDensity class object
-    sd_object = SemanticDensity(llm=mock_object)
+    sd_object = SemanticDensity(llm=mock_object, device="cpu")
 
     async def mock_generate_original_responses(*args, **kwargs):
         sd_object.logprobs = [None] * 5
