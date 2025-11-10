@@ -16,7 +16,6 @@ import pytest
 import json
 import tempfile
 import os
-import unittest
 from langchain_core.language_models.chat_models import BaseChatModel
 from unittest.mock import patch, MagicMock
 from uqlm.scorers import UQEnsemble
@@ -151,7 +150,7 @@ async def test_ensemble(monkeypatch, mock_llm):
         result = await uqe.tune(prompts=PROMPTS, ground_truth_answers=[PROMPTS[0]] + [" "] * len(PROMPTS[:-1]), grader_function=lambda response, answer: response == answer, show_progress_bars=show_progress_bars)
         assert result.metadata["thresh"] == tune_results["thresh"]
 
-    #@unittest.skipIf(os.getenv("CI"), "Skipping test in CI environment")
+    # @unittest.skipIf(os.getenv("CI"), "Skipping test in CI environment")
     async def test_tune_with_default_grader():
         result = await uqe.tune(prompts=PROMPTS, ground_truth_answers=PROMPTS, show_progress_bars=False)
         assert result.metadata["thresh"] == tune_results["thresh"]
