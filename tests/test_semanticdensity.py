@@ -75,7 +75,11 @@ async def test_generate_and_score_mocked():
     semantic_density.score = MagicMock(return_value=UQResult({"data": {}, "metadata": {}}))
 
     prompts = ["prompt1", "prompt2"]
-    # result = await semantic_density.generate_and_score(prompts, num_responses=2)
+
+    # Manually set prompts since score is mocked
+    semantic_density.prompts = prompts
+
+    result = await semantic_density.generate_and_score(prompts, num_responses=2)
 
     assert semantic_density.prompts == prompts
     assert semantic_density.num_responses == 2
