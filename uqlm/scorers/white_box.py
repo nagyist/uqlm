@@ -22,7 +22,7 @@ from uqlm.white_box.sampled_logprobs import SampledLogprobsScorer, SAMPLED_LOGPR
 from uqlm.white_box.p_true import PTrueScorer
 from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
 from uqlm.utils.results import UQResult
-from uqlm.utils.warn import beta_warning
+from uqlm.utils.warn import beta_warning, deprecation_warning
 
 ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_NAMES + SAMPLED_LOGPROBS_SCORER_NAMES + ["p_true"]
 
@@ -172,6 +172,9 @@ class WhiteBoxUQ(UncertaintyQuantifier):
                     self.scorers.append(scorer)
                 else:
                     raise ValueError(f"Invalid scorer provided: {scorer}")
+
+        if "normalized_probability" in self.scorers:
+            deprecation_warning("normalized_probability will be deprecated in favor of sequence_probability with length_normalize=True in v0.5")
         self.single_logprobs_scorer_names = list(set(SINGLE_LOGPROBS_SCORER_NAMES) & set(self.scorers))
         self.top_logprobs_scorer_names = list(set(TOP_LOGPROBS_SCORER_NAMES) & set(self.scorers))
         self.sampled_logprobs_scorer_names = list(set(SAMPLED_LOGPROBS_SCORER_NAMES) & set(self.scorers))
