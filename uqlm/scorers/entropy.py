@@ -210,7 +210,7 @@ class SemanticEntropy(UncertaintyQuantifier):
             best_responses[i], discrete_semantic_entropy[i], tokenprob_semantic_entropy[i], num_semantic_sets[i] = tmp
 
         if self.progress_bar:
-            progress_task = self.progress_bar.add_task("- Scoring responses with NLI...", total=n_prompts)
+            progress_task = self.progress_bar.add_task("  - Scoring responses with semantic clustering...", total=n_prompts)
 
         for i in range(n_prompts):
             _process_i(i)
