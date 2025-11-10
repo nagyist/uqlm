@@ -38,14 +38,7 @@ def create_mock_llm():
 def mock_response_generator():
     """Fixture to create a mock ResponseGenerator."""
     mock_response_generator = AsyncMock()
-    mock_response_generator.generate_responses = AsyncMock(return_value={
-        "metadata": {
-            "logprobs": [
-                [{"token": "True", "logprob": -0.1}],
-                [{"token": "False", "logprob": -2.0}]
-            ]
-        }
-    })
+    mock_response_generator.generate_responses = AsyncMock(return_value={"metadata": {"logprobs": [[{"token": "True", "logprob": -0.1}], [{"token": "False", "logprob": -2.0}]]}})
     return mock_response_generator
 
 

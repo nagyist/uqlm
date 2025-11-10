@@ -28,13 +28,8 @@ PROMPTS = data["prompts"]
 MOCKED_RESPONSES = data["responses"]
 MOCKED_LOGPROBS = data["logprobs"]
 
-mock_object = AzureChatOpenAI(
-    deployment_name="YOUR-DEPLOYMENT",
-    temperature=1.0,
-    api_key="SECRET_API_KEY",
-    api_version="2024-05-01-preview",
-    azure_endpoint="https://mocked.endpoint.com"
-)
+mock_object = AzureChatOpenAI(deployment_name="YOUR-DEPLOYMENT", temperature=1.0, api_key="SECRET_API_KEY", api_version="2024-05-01-preview", azure_endpoint="https://mocked.endpoint.com")
+
 
 @pytest.mark.asyncio
 async def test_whiteboxuq_basic(monkeypatch):
@@ -55,6 +50,7 @@ async def test_whiteboxuq_basic(monkeypatch):
 
         assert results.metadata == metadata
 
+
 @pytest.mark.asyncio
 async def test_whiteboxuq_top_logprobs(monkeypatch):
     wbuq = WhiteBoxUQ(llm=mock_object, scorers=["sequence_probability"])
@@ -67,6 +63,7 @@ async def test_whiteboxuq_top_logprobs(monkeypatch):
 
     results = await wbuq.generate_and_score(prompts=PROMPTS, show_progress_bars=False)
     assert "sequence_probability" in results.data
+
 
 @pytest.mark.asyncio
 async def test_whiteboxuq_sampled_logprobs(monkeypatch):
@@ -86,6 +83,7 @@ async def test_whiteboxuq_sampled_logprobs(monkeypatch):
     results = await wbuq.generate_and_score(prompts=PROMPTS, show_progress_bars=False)
     assert "monte_carlo_probability" in results.data
 
+
 @pytest.mark.asyncio
 async def test_whiteboxuq_p_true(monkeypatch):
     wbuq = WhiteBoxUQ(llm=mock_object, scorers=["p_true"])
@@ -103,6 +101,7 @@ async def test_whiteboxuq_p_true(monkeypatch):
     results = await wbuq.generate_and_score(prompts=PROMPTS, show_progress_bars=False)
     assert "p_true" in results.data
 
+
 def test_whiteboxuq_invalid_scorer():
     with pytest.raises(ValueError, match="Invalid scorer provided: invalid_scorer"):
         WhiteBoxUQ(llm=mock_object, scorers=["invalid_scorer"])
@@ -110,11 +109,7 @@ def test_whiteboxuq_invalid_scorer():
 
 @pytest.mark.asyncio
 async def test_whiteboxuq_top_logprobs_full(monkeypatch):
-    wbuq = WhiteBoxUQ(
-        llm=mock_object,
-        scorers=["mean_token_negentropy"],
-        top_k_logprobs=10 
-    )
+    wbuq = WhiteBoxUQ(llm=mock_object, scorers=["mean_token_negentropy"], top_k_logprobs=10)
 
     async def mock_generate_original_responses(*args, **kwargs):
         wbuq.logprobs = MOCKED_LOGPROBS
@@ -123,9 +118,7 @@ async def test_whiteboxuq_top_logprobs_full(monkeypatch):
     monkeypatch.setattr(wbuq, "generate_original_responses", mock_generate_original_responses)
 
     # Optional: monkeypatch the scorer to ensure evaluate is called and returns something
-    wbuq.top_logprobs_scorer.evaluate = lambda logprobs_results: {
-       "mean_token_negentropy": [0.8] * len(PROMPTS)
-    }
+    wbuq.top_logprobs_scorer.evaluate = lambda logprobs_results: {"mean_token_negentropy": [0.8] * len(PROMPTS)}
 
     results = await wbuq.generate_and_score(prompts=PROMPTS, show_progress_bars=False)
-    assert "mean_token_negentropy" in results.data        
+    assert "mean_token_negentropy" in results.data
