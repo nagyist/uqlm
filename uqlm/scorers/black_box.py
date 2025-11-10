@@ -188,22 +188,17 @@ class BlackBoxUQ(UncertaintyQuantifier):
             available_nli_scores = self.scorer_objects["semantic_negentropy"].clusterer.nli_scores
             if self.use_best:
                 self._update_best(se_tmp.data["responses"], include_logprobs=False)
-           
-        self._start_progress_bar() # restart progress bar as entropy scorer stops it
+
+        self._start_progress_bar()  # restart progress bar as entropy scorer stops it
         if self.consistency_scorer_names:
             self.scorer_objects["consistency"].use_best = False
-            consistency_tmp = self.scorer_objects["consistency"].evaluate(
-                responses=self.responses, 
-                sampled_responses=self.sampled_responses, 
-                available_nli_scores=available_nli_scores, 
-                progress_bar=None if self.entropy_scorer_names else self.progress_bar
-            )
+            consistency_tmp = self.scorer_objects["consistency"].evaluate(responses=self.responses, sampled_responses=self.sampled_responses, available_nli_scores=available_nli_scores, progress_bar=self.progress_bar)
             for scorer in self.consistency_scorer_names:
                 self.scores_dict[scorer] = consistency_tmp[scorer]
-                
+
         for scorer in self.similarity_scorer_names:
             self.scores_dict[scorer] = self.scorer_objects[scorer].evaluate(responses=self.responses, sampled_responses=self.sampled_responses, progress_bar=self.progress_bar)
-        
+
         result = self._construct_result()
 
         self._stop_progress_bar()
@@ -229,7 +224,7 @@ class BlackBoxUQ(UncertaintyQuantifier):
                 self.similarity_scorer_names.append(scorer)
             elif scorer == "bert_score":
                 self.scorer_objects["bert_score"] = BertScorer(device=self.device)
-                self.similarity_scorer_names.append(scorer)               
+                self.similarity_scorer_names.append(scorer)
             elif scorer == "cosine_sim":
                 self.scorer_objects["cosine_sim"] = CosineScorer(transformer=self.sentence_transformer)
                 self.similarity_scorer_names.append(scorer)
