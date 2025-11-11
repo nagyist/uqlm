@@ -114,6 +114,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         self.prompts = None
         self.logprobs = None
         self.multiple_logprobs = None
+        self.use_logprobs = False
         self.clusterer = SemanticClusterer(nli=self.nli, length_normalize=length_normalize)
         self.prompts_in_nli = prompts_in_nli
 
@@ -144,6 +145,7 @@ class SemanticEntropy(UncertaintyQuantifier):
 
         if hasattr(self.llm, "logprobs"):
             self.llm.logprobs = True
+            self.use_logprobs = True
         else:
             warnings.warn("The provided LLM does not support logprobs access. Only discrete semantic entropy will be computed.")
 
@@ -220,7 +222,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         confidence_scores = [1 - ne for ne in self._normalize_entropy(discrete_semantic_entropy)]
 
         if self.use_best:
-            self._update_best(best_responses, include_logprobs=self.llm.logprobs)
+            self._update_best(best_responses, include_logprobs=self.use_logprobs)
 
         data_to_return = self._construct_black_box_return_data()
         data_to_return["discrete_entropy_values"] = discrete_semantic_entropy
