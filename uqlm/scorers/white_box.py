@@ -183,7 +183,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         if self.top_logprobs_scorer_names:
             self.top_logprobs_scorer = TopLogprobsScorer(scorers=self.top_logprobs_scorer_names)
             self.top_k_logprobs = top_k_logprobs
-            beta_warning("Scoring with top_logprobs is in beta. Please use it with caution as it may change in future releases.")
+            beta_warning("Scorers based on top_logprobs ('mean_token_negentropy','min_token_negentropy','probability_margin') is in beta. Please use with caution as it may change in future releases.")
         if self.sampled_logprobs_scorer_names:
             self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize)
         if "p_true" in self.scorers:
