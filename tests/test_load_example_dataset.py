@@ -15,7 +15,6 @@
 import os
 import platform
 import pytest
-import unittest
 import pandas as pd
 from uqlm.utils.dataloader import load_example_dataset, list_dataset_names, _combine_question_and_choices
 from uqlm.utils.dataloader import _dataset_processing
@@ -30,7 +29,6 @@ def test_list_dataset_names():
 def test_load_nonexistent_dataset():
     with pytest.raises(FileNotFoundError):
         load_example_dataset("nonexistent_dataset")
-
 
 
 # @unittest.skipIf(((os.getenv("CI") == "true") & (platform.system() == "Darwin")), "Skipping test in macOS CI due to connection issues.")

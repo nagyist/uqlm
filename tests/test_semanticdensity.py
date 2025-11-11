@@ -103,13 +103,11 @@ def test_score_mocked():
     # Required attributes
     responses = ["response1", "response2"]
     sampled_responses = [["sample1", "sample2"], ["sample3", "sample4"]]
-    semantic_density.responses = responses
-    semantic_density.sampled_responses = sampled_responses
-    semantic_density.prompts = ["prompt1", "prompt2"]
-    semantic_density.multiple_logprobs = [["logprob1", "logprob2"], ["logprob3", "logprob4"]]
-    semantic_density.logprobs = [None, None]
+    prompts = ["prompt1", "prompt2"]
+    sampled_logprobs_results = [["logprob1", "logprob2"], ["logprob3", "logprob4"]]
+    logprobs_results = [None, None]
 
-    result = semantic_density.score(responses, sampled_responses)
+    result = semantic_density.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results)
 
     assert "semantic_density_values" in result.data
     assert "multiple_logprobs" in result.data
