@@ -148,7 +148,7 @@ class SemanticEntropy(UncertaintyQuantifier):
             self.use_logprobs = True
         else:
             warnings.warn("The provided LLM does not support logprobs access. Only discrete semantic entropy will be computed.")
-            
+
         self._construct_progress_bar(show_progress_bars)
         self._display_generation_header(show_progress_bars)
 
