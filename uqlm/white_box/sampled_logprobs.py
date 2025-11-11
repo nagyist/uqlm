@@ -27,7 +27,7 @@ SAMPLED_LOGPROBS_SCORER_NAMES = ["semantic_negentropy", "semantic_density", "mon
 
 
 class SampledLogprobsScorer(LogprobsScorer):
-    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm: BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, use_best: bool = True, prompts_in_nli: bool = True, length_normalize: bool = True):
+    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm: BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, prompts_in_nli: bool = True, length_normalize: bool = True):
         """
         Initialize the SampledLogprobsScorer.
 
@@ -48,10 +48,6 @@ class SampledLogprobsScorer(LogprobsScorer):
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
 
-        use_best : bool, default=True
-            Specifies whether to swap the original response for the uncertainty-minimized response
-            based on semantic entropy clusters.
-
         prompts_in_nli : bool, default=True
             Specifies whether to use the prompts in the NLI inputs for semantic entropy and semantic density scorers.
 
@@ -63,7 +59,6 @@ class SampledLogprobsScorer(LogprobsScorer):
         self.llm = llm
         self.nli_model_name = nli_model_name
         self.max_length = max_length
-        self.use_best = use_best
         self.prompts_in_nli = prompts_in_nli
         self.length_normalize = length_normalize
         self.semantic_negentropy_scorer = None
@@ -98,7 +93,7 @@ class SampledLogprobsScorer(LogprobsScorer):
         return monte_carlo_scores
 
     def compute_semantic_negentropy(self, responses: List[str], prompts: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]], progress_bar: Optional[Progress] = None) -> List[float]:
-        self.semantic_negentropy_scorer = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize)
+        self.semantic_negentropy_scorer = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=False, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize)
         self.semantic_negentropy_scorer.progress_bar = progress_bar
         show_progress_bars = True if progress_bar else False
         se_result = self.semantic_negentropy_scorer.score(responses=responses, prompts=prompts, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, show_progress_bars=show_progress_bars, _display_header=False)
@@ -106,7 +101,6 @@ class SampledLogprobsScorer(LogprobsScorer):
 
     def compute_semantic_density(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]], prompts: List[str] = None, progress_bar: Optional[Progress] = None) -> List[float]:
         semantic_density_scorer = SemanticDensity(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, length_normalize=self.length_normalize)
-        semantic_density_scorer.prompts = prompts
         if self.semantic_negentropy_scorer:
             semantic_density_scorer.nli.probabilities = self.semantic_negentropy_scorer.clusterer.nli.probabilities
             show_progress_bars = False
@@ -114,5 +108,5 @@ class SampledLogprobsScorer(LogprobsScorer):
             semantic_density_scorer.nli.probabilities = dict()
             semantic_density_scorer.progress_bar = progress_bar
             show_progress_bars = True
-        sd_result = semantic_density_scorer.score(responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, show_progress_bars=show_progress_bars, _display_header=False)
+        sd_result = semantic_density_scorer.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, show_progress_bars=show_progress_bars, _display_header=False)
         return sd_result.to_dict()["data"]["semantic_density_values"]

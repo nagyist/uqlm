@@ -16,7 +16,6 @@ def test_initialization(scorer):
     assert scorer.llm is not None
     assert scorer.nli_model_name == "microsoft/deberta-large-mnli"
     assert scorer.max_length == 2000
-    assert scorer.use_best is True
     assert scorer.prompts_in_nli is True
     assert scorer.length_normalize is True
 

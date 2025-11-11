@@ -88,8 +88,9 @@ class SemanticDensity(UncertaintyQuantifier):
 
         Parameters
         ----------
-        prompts : list of str
-            A list of input prompts for the model.
+        prompts : List[Union[str, List[BaseMessage]]]
+            List of prompts from which LLM responses will be generated. Prompts in list may be strings or lists of BaseMessage. If providing
+            input type List[List[BaseMessage]], refer to https://python.langchain.com/docs/concepts/messages/#langchain-messages for support.
 
         num_responses : int, default=5
             The number of sampled responses used to compute consistency.
@@ -116,14 +117,18 @@ class SemanticDensity(UncertaintyQuantifier):
 
         responses = await self.generate_original_responses(prompts, progress_bar=self.progress_bar)
         sampled_responses = await self.generate_candidate_responses(prompts, num_responses=self.num_responses, progress_bar=self.progress_bar)
-        return self.score(responses=responses, sampled_responses=sampled_responses, show_progress_bars=show_progress_bars)
+        return self.score(prompts=self.prompts, responses=responses, sampled_responses=sampled_responses, show_progress_bars=show_progress_bars)
 
-    def score(self, responses: List[str] = None, sampled_responses: List[List[str]] = None, logprobs_results: List[List[Dict[str, Any]]] = None, sampled_logprobs_results: List[List[List[Dict[str, Any]]]] = None, show_progress_bars: Optional[bool] = True, _display_header: bool = True) -> UQResult:
+    def score(self, prompts: List[str] = None, responses: List[str] = None, sampled_responses: List[List[str]] = None, logprobs_results: List[List[Dict[str, Any]]] = None, sampled_logprobs_results: List[List[List[Dict[str, Any]]]] = None, show_progress_bars: Optional[bool] = True, _display_header: bool = True) -> UQResult:
         """
         Evaluate semantic density score on LLM responses for the provided prompts.
 
         Parameters
         ----------
+        prompts : List[Union[str, List[BaseMessage]]]
+            List of prompts from which LLM responses will be generated. Prompts in list may be strings or lists of BaseMessage. If providing
+            input type List[List[BaseMessage]], refer to https://python.langchain.com/docs/concepts/messages/#langchain-messages for support.
+
         responses : list of str, default=None
             A list of model responses for the prompts. If not provided, responses will be generated with the provided LLM.
 
@@ -145,6 +150,7 @@ class SemanticDensity(UncertaintyQuantifier):
         UQResult
             UQResult, containing data (responses, sampled responses, and semantic density score) and metadata
         """
+        self.prompts = prompts if prompts else self.prompts
         self.responses = responses
         self.sampled_responses = sampled_responses
         self.num_responses = len(self.sampled_responses[0])
@@ -167,7 +173,7 @@ class SemanticDensity(UncertaintyQuantifier):
         self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars and _display_header)
         if self.progress_bar:
-            progress_task = self.progress_bar.add_task("  - Scoring responses with NLI...", total=n_prompts)
+            progress_task = self.progress_bar.add_task("  - Scoring responses with semantic clustering...", total=n_prompts)
 
         for i in range(n_prompts):
             _process_i(i)
@@ -200,11 +206,11 @@ class SemanticDensity(UncertaintyQuantifier):
         # conditioned on prompt
         nli_scores = []
         for candidate in candidates:
-            input = (f"{prompt}\n{original_response}", f"{prompt}\n{candidate}")
-            if input[0] + "_" + input[1] not in self.nli.probabilities:
-                nli_scores.append(self.nli.predict(input[0], input[1]))
+            inputs = (f"{prompt}\n{original_response}", f"{prompt}\n{candidate}")
+            if inputs[0] + "_" + inputs[1] not in self.nli.probabilities:
+                nli_scores.append(self.nli.predict(inputs[0], inputs[1]))
             else:
-                nli_scores.append(self.nli.probabilities[input[0] + "_" + input[1]])
+                nli_scores.append(self.nli.probabilities[inputs[0] + "_" + inputs[1]])
 
         # Use NLI model to estimate semantic distance between each candidate response
         # and the original response
