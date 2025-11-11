@@ -57,12 +57,12 @@ class BlackBoxUQ(UncertaintyQuantifier):
             scorer is deprecated as of v0.2.0.
 
         device: str or torch.device input or torch.device object, default="cpu"
-            Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'noncontradiction', 'entailment'
+            Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'noncontradiction', 'entailment', 'semantic_sets_confidence'
             scorers. Pass a torch.device to leverage GPU.
 
         use_best : bool, default=True
             Specifies whether to swap the original response for the uncertainty-minimized response
-            based on semantic entropy clusters. Only used if `scorers` includes 'semantic_negentropy', 'noncontradiction', or 'entailment'.
+            based on semantic entropy clusters. Only used if `scorers` includes 'semantic_negentropy', 'noncontradiction', 'entailment', or 'semantic_sets_confidence'.
 
         nli_model_name : str, default="microsoft/deberta-large-mnli"
             Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
@@ -178,27 +178,27 @@ class BlackBoxUQ(UncertaintyQuantifier):
         self._display_scoring_header(show_progress_bars and _display_header)
 
         available_nli_scores = dict()
-        for scorer_key in self.scorer_objects:
-            if scorer_key in ["semantic_negentropy", "semantic_sets_confidence"]:
-                if "semantic_negentropy" in self.scores_dict or "semantic_sets_confidence" in self.scores_dict:
-                    continue
+        if self.entropy_scorer_names:
+            self.scorer_objects["semantic_negentropy"].progress_bar = self.progress_bar
+            se_tmp = self.scorer_objects["semantic_negentropy"].score(responses=self.responses, sampled_responses=self.sampled_responses, _display_header=False)
+            if "semantic_negentropy" in self.scorer_names:
+                self.scores_dict["semantic_negentropy"] = [1 - s for s in self.scorer_objects["semantic_negentropy"]._normalize_entropy(se_tmp.data["discrete_entropy_values"])]  # Convert to confidence score
+            if "semantic_sets_confidence" in self.scorer_names:
+                self.scores_dict["semantic_sets_confidence"] = [1 - (s - 1) / (self.num_responses - 1) for s in se_tmp.data["num_semantic_sets"]]  # Convert to confidence score
+            available_nli_scores = self.scorer_objects["semantic_negentropy"].clusterer.nli_scores
+            if self.use_best:
+                self._update_best(se_tmp.data["responses"], include_logprobs=False)
 
-                self.scorer_objects["semantic_negentropy"].progress_bar = self.progress_bar
-                se_tmp = self.scorer_objects["semantic_negentropy"].score(responses=self.responses, sampled_responses=self.sampled_responses, _display_header=False)
-                if "semantic_negentropy" in self.scorer_names:
-                    self.scores_dict["semantic_negentropy"] = [1 - s for s in self.scorer_objects["semantic_negentropy"]._normalize_entropy(se_tmp.data["discrete_entropy_values"])]  # Convert to confidence score
-                if "semantic_sets_confidence" in self.scorer_names:
-                    self.scores_dict["semantic_sets_confidence"] = [1 - (s - 1) / (self.num_responses - 1) for s in se_tmp.data["num_semantic_sets"]]  # Convert to confidence score
-                available_nli_scores = self.scorer_objects[scorer_key].clusterer.nli_scores
-                if self.use_best:
-                    self._update_best(se_tmp.data["responses"], include_logprobs=False)
-            elif scorer_key == "consistency":
-                self.scorer_objects[scorer_key].use_best = False
-                nc_tmp = self.scorer_objects[scorer_key].evaluate(responses=self.responses, sampled_responses=self.sampled_responses, available_nli_scores=available_nli_scores, progress_bar=self.progress_bar)
-                for scorer in self.scorer_objects[scorer_key].scorers:
-                    self.scores_dict[scorer] = nc_tmp[scorer]
-            elif scorer_key in ["exact_match", "bert_score", "cosine_sim"]:
-                self.scores_dict[scorer_key] = self.scorer_objects[scorer_key].evaluate(responses=self.responses, sampled_responses=self.sampled_responses, progress_bar=self.progress_bar)
+        self._start_progress_bar()  # restart progress bar as entropy scorer stops it
+        if self.consistency_scorer_names:
+            self.scorer_objects["consistency"].use_best = False
+            consistency_tmp = self.scorer_objects["consistency"].evaluate(responses=self.responses, sampled_responses=self.sampled_responses, available_nli_scores=available_nli_scores, progress_bar=self.progress_bar)
+            for scorer in self.consistency_scorer_names:
+                self.scores_dict[scorer] = consistency_tmp[scorer]
+
+        for scorer in self.similarity_scorer_names:
+            self.scores_dict[scorer] = self.scorer_objects[scorer].evaluate(responses=self.responses, sampled_responses=self.sampled_responses, progress_bar=self.progress_bar)
+
         result = self._construct_result()
 
         self._stop_progress_bar()
@@ -217,19 +217,21 @@ class BlackBoxUQ(UncertaintyQuantifier):
         self.scorer_objects = {}
         if scorers is None:
             scorers = self.default_black_box_names
-        consistency = []
+        self.consistency_scorer_names, self.entropy_scorer_names, self.similarity_scorer_names = [], [], []
         for scorer in scorers:
             if scorer == "exact_match":
                 self.scorer_objects["exact_match"] = MatchScorer()
+                self.similarity_scorer_names.append(scorer)
             elif scorer == "bert_score":
                 self.scorer_objects["bert_score"] = BertScorer(device=self.device)
+                self.similarity_scorer_names.append(scorer)
             elif scorer == "cosine_sim":
                 self.scorer_objects["cosine_sim"] = CosineScorer(transformer=self.sentence_transformer)
+                self.similarity_scorer_names.append(scorer)
             elif scorer in ["noncontradiction", "entailment"]:
-                consistency.append(scorer)
+                self.consistency_scorer_names.append(scorer)
             elif scorer in ["semantic_negentropy", "semantic_sets_confidence"]:
-                if "semantic_negentropy" not in self.scorer_objects:
-                    self.scorer_objects["semantic_negentropy"] = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best)
+                self.entropy_scorer_names.append(scorer)
             else:
                 if scorer == "bleurt":
                     print("bleurt is deprecated as of v0.2.0")
@@ -238,7 +240,8 @@ class BlackBoxUQ(UncertaintyQuantifier):
                     scorers must be one of ['semantic_negentropy', 'noncontradiction', 'exact_match', 'bert_score', 'cosine_sim', 'semantic_sets_confidence', 'entailment']
                     """
                 )
-        if consistency:
-            self.scorer_objects["consistency"] = ConsistencyScorer(nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best, scorers=consistency)
-
+        if self.consistency_scorer_names:
+            self.scorer_objects["consistency"] = ConsistencyScorer(nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best, scorers=self.consistency_scorer_names)
+        if self.entropy_scorer_names:
+            self.scorer_objects["semantic_negentropy"] = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best)
         self.scorers = scorers

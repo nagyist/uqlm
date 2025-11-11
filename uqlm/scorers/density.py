@@ -118,7 +118,7 @@ class SemanticDensity(UncertaintyQuantifier):
         sampled_responses = await self.generate_candidate_responses(prompts, num_responses=self.num_responses, progress_bar=self.progress_bar)
         return self.score(responses=responses, sampled_responses=sampled_responses, show_progress_bars=show_progress_bars)
 
-    def score(self, responses: List[str] = None, sampled_responses: List[List[str]] = None, logprobs_results: List[List[Dict[str, Any]]] = None, sampled_logprobs_results: List[List[List[Dict[str, Any]]]] = None, show_progress_bars: Optional[bool] = True) -> UQResult:
+    def score(self, responses: List[str] = None, sampled_responses: List[List[str]] = None, logprobs_results: List[List[Dict[str, Any]]] = None, sampled_logprobs_results: List[List[List[Dict[str, Any]]]] = None, show_progress_bars: Optional[bool] = True, _display_header: bool = True) -> UQResult:
         """
         Evaluate semantic density score on LLM responses for the provided prompts.
 
@@ -165,9 +165,9 @@ class SemanticDensity(UncertaintyQuantifier):
             semantic_density[i], _ = self._semantic_density_process(prompt=prompt, original_response=original_response, candidates=candidates, i=i, logprobs_results=candidate_logprobs)
 
         self._construct_progress_bar(show_progress_bars)
-        self._display_scoring_header(show_progress_bars)
+        self._display_scoring_header(show_progress_bars and _display_header)
         if self.progress_bar:
-            progress_task = self.progress_bar.add_task("- Scoring responses with NLI...", total=n_prompts)
+            progress_task = self.progress_bar.add_task("  - Scoring responses with NLI...", total=n_prompts)
 
         for i in range(n_prompts):
             _process_i(i)

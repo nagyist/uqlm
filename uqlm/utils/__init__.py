@@ -22,6 +22,26 @@ from uqlm.utils.tuner import Tuner
 from uqlm.utils.grader import LLMGrader
 from uqlm.utils.llm_config import save_llm_config, load_llm_config
 from uqlm.utils.display import ConditionalBarColumn, ConditionalTimeElapsedColumn, ConditionalTextColumn, ConditionalSpinnerColumn
-from uqlm.utils.warn import beta_warning
+from uqlm.utils.warn import beta_warning, deprecation_warning
 
-__all__ = ["plot_model_accuracies", "plot_filtered_accuracy", "plot_ranked_auc", "load_example_dataset", "load_dataset", "load_example_dataset", "math_postprocessor", "ResponseGenerator", "UQResult", "Tuner", "LLMGrader", "save_llm_config", "load_llm_config", "ConditionalBarColumn", "ConditionalTimeElapsedColumn", "ConditionalTextColumn", "ConditionalSpinnerColumn", "beta_warning"]
+__all__ = [
+    "plot_model_accuracies",
+    "plot_filtered_accuracy",
+    "plot_ranked_auc",
+    "load_example_dataset",
+    "load_dataset",
+    "load_example_dataset",
+    "math_postprocessor",
+    "ResponseGenerator",
+    "UQResult",
+    "Tuner",
+    "LLMGrader",
+    "save_llm_config",
+    "load_llm_config",
+    "ConditionalBarColumn",
+    "ConditionalTimeElapsedColumn",
+    "ConditionalTextColumn",
+    "ConditionalSpinnerColumn",
+    "beta_warning",
+    "deprecation_warning",
+]

@@ -1,11 +1,11 @@
 {
   "weights": [
-    0.0009671121179852439,
-    0.6562971985477949,
-    0.3075076665757106,
-    0.03522802275850924
+    0.0025387213438219183,
+    0.8341461711896818,
+    0.040041378980108795,
+    0.12327372848638753
   ],
-  "thresh": 0.79,
+  "thresh": 0.74,
   "components": [
     "exact_match",
     "noncontradiction",
@@ -21,7 +21,7 @@
     "n": 5,
     "openai_api_type": "azure",
     "openai_api_version": "2024-02-15-preview",
-    "output_version": "v0",
+    "profile": {},
     "streaming": false,
     "use_previous_response_id": false,
     "verbose": false
@@ -36,21 +36,7 @@
       "n": 5,
       "openai_api_type": "azure",
       "openai_api_version": "2024-02-15-preview",
-      "output_version": "v0",
-      "streaming": false,
-      "use_previous_response_id": false,
-      "verbose": false
-    },
-    "judge_2": {
-      "class_name": "AzureChatOpenAI",
-      "module": "langchain_openai.chat_models.azure",
-      "deployment_name": "gpt-4o",
-      "logprobs": true,
-      "model_version": "",
-      "n": 5,
-      "openai_api_type": "azure",
-      "openai_api_version": "2024-02-15-preview",
-      "output_version": "v0",
+      "profile": {},
       "streaming": false,
       "use_previous_response_id": false,
       "verbose": false
