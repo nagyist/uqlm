@@ -28,7 +28,7 @@ ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_
 
 
 class WhiteBoxUQ(UncertaintyQuantifier):
-    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True) -> None:
+    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True, device: Any = None) -> None:
         """
         Class for computing white-box UQ confidence scores. This class offers two confidence scores, normalized
         probability :footcite:`malinin2021uncertaintyestimationautoregressivestructured` and minimum probability :footcite:`manakul2023selfcheckgptzeroresourceblackboxhallucination`.
@@ -61,12 +61,16 @@ class WhiteBoxUQ(UncertaintyQuantifier):
 
         length_normalize : bool, default=True
             Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, monte_carlo_probability, and consistency_and_confidence).
+
+        device: str or torch.device input or torch.device object, default="cpu"
+            Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. Pass a torch.device to leverage GPU.
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.sampling_temperature = sampling_temperature
         self.top_k_logprobs = None  # used only if top_logprobs scorers used
         self.length_normalize = length_normalize
         self.prompts_in_nli = prompts_in_nli
+        self.device = device
         self._validate_scorers(scorers, top_k_logprobs)
         self.multiple_logprobs = None
 
@@ -155,6 +159,8 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         if self.sampled_logprobs_scorer_names:
             sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses, prompts=prompts, progress_bar=self.progress_bar)
             data.update(sampled_logprobs_scores_dict)
+
+        self._start_progress_bar()  # restart progress bar as entropy scorer stops it
         if "p_true" in self.scorers:
             p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
             data.update(p_true_scores_dict)
@@ -185,6 +191,6 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             self.top_k_logprobs = top_k_logprobs
             beta_warning("Scorers based on top_logprobs ('mean_token_negentropy','min_token_negentropy','probability_margin') is in beta. Please use with caution as it may change in future releases.")
         if self.sampled_logprobs_scorer_names:
-            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize)
+            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize, device=self.device)
         if "p_true" in self.scorers:
             self.p_true_scorer = PTrueScorer(llm=self.llm, max_calls_per_min=self.max_calls_per_min)

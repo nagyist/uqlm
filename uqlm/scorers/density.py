@@ -224,6 +224,9 @@ class SemanticDensity(UncertaintyQuantifier):
         kernel_values = (1 - semantic_squared_distance_expectation) * indicator
 
         # Calculate final semantic density score
-        semantic_density = np.average(kernel_values, weights=tokenprob_response_probabilities)
+        if np.sum(tokenprob_response_probabilities) == 0:
+            semantic_density = np.nan
+        else:
+            semantic_density = np.average(kernel_values, weights=tokenprob_response_probabilities)
 
         return (semantic_density, nli_scores)
