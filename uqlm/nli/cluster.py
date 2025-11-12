@@ -8,13 +8,15 @@ class SemanticClusterer:
     def __init__(self, nli: NLI = None, length_normalize: bool = False):
         self.nli = nli
         self.length_normalize = length_normalize
+        self.nli_scores = {"noncontradiction": dict(), "entailment": dict()}
 
     def evaluate(self, responses: List[str], prompt: str = None, response_probabilities: List[float] = None) -> Tuple[str, List[List[str]], List[float], Dict[Tuple[str, str], float]]:
         """
         Evaluate the cluster of responses.
         """
         clustered_responses, cluster_indices, noncontradiction_scores, entailment_scores = self.cluster_responses(responses=responses, prompt=prompt)
-        self.nli_scores = {"noncontradiction": noncontradiction_scores, "entailment": entailment_scores}
+        self.nli_scores["noncontradiction"].update(noncontradiction_scores)
+        self.nli_scores["entailment"].update(entailment_scores)
         cluster_probabilities = self.compute_cluster_probabilities(response_probabilities=response_probabilities, cluster_indices=cluster_indices)
         best_response = self.best_response_selection(clustered_responses=clustered_responses, cluster_probabilities=cluster_probabilities)
         return best_response, clustered_responses, cluster_probabilities, cluster_indices
