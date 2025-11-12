@@ -17,7 +17,7 @@ import numpy as np
 from unittest.mock import patch, MagicMock
 
 from uqlm.calibration.score_calibrator import ScoreCalibrator
-from uqlm.calibration.evaluate import _evaluate_single_calibrator, _plot_reliability_diagram
+from uqlm.calibration.evaluate import _evaluate_single_calibrator, _plot_reliability_diagram, evaluate_calibration
 from uqlm.utils.results import UQResult
 
 
@@ -519,3 +519,43 @@ class TestScoreEvaluator:
         assert isinstance(metrics["ece"], float)
         assert not np.isnan(metrics["ece"])
         assert not np.isinf(metrics["ece"])
+
+
+#  Helper to create a mock UQResult
+class MockUQResult:
+    def __init__(self, data):
+        self.data = data
+
+
+# ValueError when lengths mismatch
+def test_evaluate_calibration_length_mismatch():
+    uq_result = MockUQResult(data={"responses": [1, 2, 3], "score": [0.8, 0.6, 0.9]})
+    correct_indicators = [1, 0]  # Mismatch
+    with pytest.raises(ValueError, match="must have the same length"):
+        evaluate_calibration(uq_result, correct_indicators)
+
+
+#  Metrics computed only for non-ignored columns
+def test_evaluate_calibration_skips_ignore_columns():
+    uq_result = MockUQResult(
+        data={
+            "responses": ["a", "b"],
+            "score": [0.8, 0.6],
+            "logprob": [0.1, 0.2],  # Should be ignored
+        }
+    )
+    correct_indicators = [1, 0]
+    result = evaluate_calibration(uq_result, correct_indicators, plot=False)
+    assert "score" in result.index
+    assert "logprob" not in result.index
+
+
+@patch("matplotlib.pyplot.show")  # Prevent actual plot display
+def test_plot_reliability_diagram_with_title(mock_show):
+    bin_boundaries = np.linspace(0, 1, 11)
+    bin_counts = [1] * 10
+    bin_accuracies = [0.5] * 10
+
+    with patch("matplotlib.figure.Figure.suptitle") as mock_suptitle:
+        _plot_reliability_diagram(bin_boundaries, bin_counts, bin_accuracies, axes=None, title="TestTitle")
+        mock_suptitle.assert_called_once_with("Plots for TestTitle")
