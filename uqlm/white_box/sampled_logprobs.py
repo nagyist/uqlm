@@ -27,7 +27,7 @@ SAMPLED_LOGPROBS_SCORER_NAMES = ["semantic_negentropy", "semantic_density", "mon
 
 
 class SampledLogprobsScorer(LogprobsScorer):
-    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm: BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, prompts_in_nli: bool = True, length_normalize: bool = True):
+    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm: BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, prompts_in_nli: bool = True, length_normalize: bool = True, device: Any = None) -> None:
         """
         Initialize the SampledLogprobsScorer.
 
@@ -53,6 +53,9 @@ class SampledLogprobsScorer(LogprobsScorer):
 
         length_normalize : bool, default=True
             Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, and monte_carlo_probability).
+            
+        device: str or torch.device input or torch.device object, default="cpu"
+            Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. Pass a torch.device to leverage GPU.
         """
         super().__init__()
         self.scorers = scorers
@@ -62,6 +65,7 @@ class SampledLogprobsScorer(LogprobsScorer):
         self.prompts_in_nli = prompts_in_nli
         self.length_normalize = length_normalize
         self.semantic_negentropy_scorer = None
+        self.device = device
 
     def evaluate(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: Optional[List[List[List[Dict[str, Any]]]]] = None, prompts: List[str] = None, progress_bar: Optional[Progress] = None):
         scores_dict = {}
@@ -93,14 +97,14 @@ class SampledLogprobsScorer(LogprobsScorer):
         return monte_carlo_scores
 
     def compute_semantic_negentropy(self, responses: List[str], prompts: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]], progress_bar: Optional[Progress] = None) -> List[float]:
-        self.semantic_negentropy_scorer = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=False, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize)
+        self.semantic_negentropy_scorer = SemanticEntropy(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=False, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize, device=self.device)
         self.semantic_negentropy_scorer.progress_bar = progress_bar
         show_progress_bars = True if progress_bar else False
         se_result = self.semantic_negentropy_scorer.score(responses=responses, prompts=prompts, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, show_progress_bars=show_progress_bars, _display_header=False)
         return se_result.to_dict()["data"]["tokenprob_confidence_scores"]
 
     def compute_semantic_density(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: List[List[List[Dict[str, Any]]]], prompts: List[str] = None, progress_bar: Optional[Progress] = None) -> List[float]:
-        semantic_density_scorer = SemanticDensity(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, length_normalize=self.length_normalize)
+        semantic_density_scorer = SemanticDensity(llm=self.llm, nli_model_name=self.nli_model_name, max_length=self.max_length, length_normalize=self.length_normalize, device=self.device)
         if self.semantic_negentropy_scorer:
             semantic_density_scorer.nli.probabilities = self.semantic_negentropy_scorer.clusterer.nli.probabilities
             show_progress_bars = False
