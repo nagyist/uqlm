@@ -61,7 +61,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
 
         length_normalize : bool, default=True
             Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, monte_carlo_probability, and consistency_and_confidence).
-            
+
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. Pass a torch.device to leverage GPU.
         """
@@ -159,7 +159,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         if self.sampled_logprobs_scorer_names:
             sampled_logprobs_scores_dict = self.sampled_logprobs_scorer.evaluate(logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, responses=responses, sampled_responses=sampled_responses, prompts=prompts, progress_bar=self.progress_bar)
             data.update(sampled_logprobs_scores_dict)
-        
+
         self._start_progress_bar()  # restart progress bar as entropy scorer stops it
         if "p_true" in self.scorers:
             p_true_scores_dict = await self.p_true_scorer.evaluate(prompts=prompts, responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
