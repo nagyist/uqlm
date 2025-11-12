@@ -16,10 +16,11 @@ import pytest
 import json
 import tempfile
 import os
-import unittest
+from langchain_core.language_models.chat_models import BaseChatModel
 from unittest.mock import patch, MagicMock
 from uqlm.scorers import UQEnsemble
 from uqlm.utils.results import UQResult
+from unittest.mock import AsyncMock
 from uqlm.utils.llm_config import save_llm_config, load_llm_config
 from langchain_openai import AzureChatOpenAI
 
@@ -39,8 +40,16 @@ MOCKED_LOGPROBS = metadata["logprobs"]
 
 @pytest.fixture
 def mock_llm():
-    """Extract judge object using pytest.fixture."""
-    return AzureChatOpenAI(deployment_name="YOUR-DEPLOYMENT", temperature=1, api_key="SECRET_API_KEY", api_version="2024-05-01-preview", azure_endpoint="https://mocked.endpoint.com")
+    mock_llm_instance = MagicMock(spec=AzureChatOpenAI)
+    mock_llm_instance.score = AsyncMock(return_value=UQResult({"data": {"judge_1": MOCKED_JUDGE_SCORES}}))
+    mock_llm_instance.generate = AsyncMock(return_value=MOCKED_RESPONSES)
+    mock_llm_instance.temperature = 1
+    mock_llm_instance.api_key = "SECRET_API_KEY"
+    mock_llm_instance.api_version = "2024-05-01-preview"
+    mock_llm_instance.azure_endpoint = "https://mocked.endpoint.com"
+    mock_llm_instance.deployment_name = "YOUR-DEPLOYMENT"
+    mock_llm_instance.logprobs = MOCKED_LOGPROBS
+    return mock_llm_instance
 
 
 def test_validate_grader(mock_llm):
@@ -91,7 +100,9 @@ def test_bsdetector_weights(mock_llm):
 
 @pytest.mark.asyncio
 async def test_ensemble(monkeypatch, mock_llm):
-    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction", "min_probability", mock_llm])
+    mock_scorer = MagicMock(spec=BaseChatModel)
+    mock_scorer.score = AsyncMock(return_value=UQResult({"data": {"judge_1": MOCKED_JUDGE_SCORES}}))
+    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction", "min_probability", mock_scorer])
 
     async def mock_generate_original_responses(*args, **kwargs):
         uqe.logprobs = MOCKED_LOGPROBS
@@ -139,7 +150,8 @@ async def test_ensemble(monkeypatch, mock_llm):
         result = await uqe.tune(prompts=PROMPTS, ground_truth_answers=[PROMPTS[0]] + [" "] * len(PROMPTS[:-1]), grader_function=lambda response, answer: response == answer, show_progress_bars=show_progress_bars)
         assert result.metadata["thresh"] == tune_results["thresh"]
 
-    @unittest.skipIf(os.getenv("CI"), "Skipping test in CI environment")
+    # @unittest.skipIf(os.getenv("CI"), "Skipping test in CI environment")
+    @pytest.mark.skipif((os.getenv("CI") == "true"), reason="Skipping test in macOS CI due to connection issues.")
     async def test_tune_with_default_grader():
         result = await uqe.tune(prompts=PROMPTS, ground_truth_answers=PROMPTS, show_progress_bars=False)
         assert result.metadata["thresh"] == tune_results["thresh"]

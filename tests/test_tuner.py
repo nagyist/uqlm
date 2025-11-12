@@ -14,6 +14,8 @@
 
 from math import isclose
 import pytest
+import numpy as np
+from unittest.mock import MagicMock
 from uqlm.utils.tuner import Tuner
 
 
@@ -91,3 +93,83 @@ class TestTuner:
         Tuner().tune_params(extended_lists, self.correct_indicators)
         # log_loss objective (obj_multiplier = -1 path)
         Tuner().tune_params(self.score_lists, self.correct_indicators, weights_objective="log_loss", thresh_objective="fbeta_score")
+
+
+@pytest.fixture
+def mock_progress():
+    progress = MagicMock()
+    progress.add_task.return_value = "task_id"
+    return progress
+
+
+def test_tune_threshold_with_progress(mock_progress):
+    tuner = Tuner()
+    y_scores = [0.1, 0.5, 0.9]
+    correct_indicators = [False, True, True]
+
+    result = tuner.tune_threshold(y_scores=y_scores, correct_indicators=correct_indicators, progress_bar=mock_progress)
+
+    assert 0 <= result <= 1
+    mock_progress.add_task.assert_called_once()
+    # Should update for each threshold value
+    assert mock_progress.update.call_count > 0
+
+
+def test_optimize_objective_with_progress_joint(mock_progress):
+    tuner = Tuner()
+    score_lists = [[0.2, 0.8], [0.5, 0.6]]
+    correct_indicators = [True, False]
+    # k=2 triggers grid search with progress bar
+    tuner.tune_params(score_lists=score_lists, correct_indicators=correct_indicators, weights_objective="fbeta_score", thresh_objective="fbeta_score", progress_bar=mock_progress, n_trials=5)
+
+    mock_progress.add_task.assert_called()
+    assert mock_progress.update.call_count > 0
+
+
+def test_grid_search_weights_thresh_progress(mock_progress):
+    tuner = Tuner()
+    tuner.k = 2
+    tuner.step_size = 0.5
+    tuner.thresh_bounds = (0, 1)
+    tuner.correct_indicators = np.array([True, False])
+    tuner.score_lists = np.array([[0.2, 0.8], [0.5, 0.6]])
+    tuner.weights_tuning_objective = tuner._f_score
+    tuner.obj_multiplier = -1
+    tuner.progress_bar = mock_progress
+    tuner.fscore_beta = 1
+    result = tuner._grid_search_weights_thresh()
+    assert len(result) == 3  # two weights + threshold
+    mock_progress.add_task.assert_called_once()
+    assert mock_progress.update.call_count > 0
+
+
+def test_grid_search_weights_progress_k2(mock_progress):
+    tuner = Tuner()
+    tuner.k = 2
+    tuner.step_size = 0.5
+    tuner.correct_indicators = np.array([True, False])
+    tuner.score_lists = np.array([[0.2, 0.8], [0.5, 0.6]])
+    tuner.weights_tuning_objective = tuner._f_score
+    tuner.obj_multiplier = -1
+    tuner.progress_bar = mock_progress
+    tuner._evaluate_objective = MagicMock(return_value=0.0)
+    result = tuner._grid_search_weights()
+    assert len(result) == 2
+    mock_progress.add_task.assert_called_once()
+    assert mock_progress.update.call_count > 0
+
+
+def test_grid_search_weights_progress_k3(mock_progress):
+    tuner = Tuner()
+    tuner.k = 3
+    tuner.step_size = 0.5
+    tuner.correct_indicators = np.array([True, False])
+    tuner.score_lists = np.array([[0.2, 0.8], [0.5, 0.6], [0.3, 0.7]])
+    tuner.weights_tuning_objective = tuner._f_score
+    tuner.obj_multiplier = -1
+    tuner.progress_bar = mock_progress
+    tuner._evaluate_objective = MagicMock(return_value=0.0)
+    result = tuner._grid_search_weights()
+    assert len(result) == 3
+    mock_progress.add_task.assert_called_once()
+    assert mock_progress.update.call_count > 0

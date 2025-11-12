@@ -17,6 +17,8 @@ import pytest
 import json
 from uqlm.judges import LLMJudge
 from langchain_openai import AzureChatOpenAI
+import warnings
+from unittest.mock import AsyncMock
 
 
 @pytest.fixture
@@ -134,22 +136,10 @@ def test_extract_answers_batch(mock_llm, test_data):
             assert actual == expected, f"Batch extraction failed for {template_name} item {i}: Expected {expected}, got {actual}"
 
 
-def test_custom_validate_inputs1(mock_llm):
-    with pytest.raises(ValueError) as value_error:
-        LLMJudge(llm=mock_llm, template_ques_ans="template{}{}", keywords_to_scores_dict={"1": ["1"]})
-    assert "keys in keywords_to_scores_dict must be floats" == str(value_error.value)
-
-
-def test_custom_validate_inputs2(mock_llm):
-    with pytest.raises(ValueError) as value_error:
-        LLMJudge(llm=mock_llm, template_ques_ans="template{}{}", keywords_to_scores_dict={1.0: 1})
-    assert "values in keywords_to_scores_dict must be lists of strings" == str(value_error.value)
-
-
 def test_custom_validate_inputs3(mock_llm):
     with pytest.raises(ValueError) as value_error:
         LLMJudge(llm=mock_llm, scoring_template="wrong")
-    assert "If provided, scoring_template must be one of 'true_false_uncertain', 'true_false', 'continuous', 'likert'. Otherwise, valid template_ques_ans and keywords_to_scores_dict must be provided" == str(value_error.value)
+    assert "If provided, scoring_template must be one of 'true_false_uncertain', 'true_false', 'continuous', 'likert'" == str(value_error.value)
 
 
 def test_parse_structured_response_malformed(mock_llm):
@@ -214,3 +204,71 @@ async def test_judge_responses_without_explanations(monkeypatch, mock_llm):
     assert "scores" in result
     assert "explanations" not in result
     assert result["scores"] == [1.0, 0.0]
+
+
+@pytest.mark.asyncio
+async def test_judge_responses_retry_with_explanations(monkeypatch):
+    llm_judge = LLMJudge(llm="fake_llm", scoring_template="true_false_uncertain")
+
+    prompts = ["What is 2+2?"]
+    responses = ["It is four."]
+
+    first_mock_response = {"data": {"prompt": ["Q1"], "response": ["invalid"]}}
+    second_mock_response = {"data": {"prompt": ["Q1"], "response": ["Score: 1.0\nExplanation: Correct"]}}
+
+    # Mock generate_responses for initial + retry calls
+    mock_generate = AsyncMock(side_effect=[first_mock_response, second_mock_response, second_mock_response])
+    monkeypatch.setattr(llm_judge, "generate_responses", mock_generate)
+
+    # Mock _extract_answers to simulate retry success
+    def extract_answers_mock(responses, explanations=False):
+        if responses == ["invalid"]:
+            return ([np.nan], ["Parsing failed"]) if explanations else [np.nan]
+        return ([1.0], ["Correct"]) if explanations else [1.0]
+
+    monkeypatch.setattr(llm_judge, "_extract_answers", extract_answers_mock)
+
+    result = await llm_judge.judge_responses(prompts, responses, retries=1, explanations=True)
+
+    # Assert
+    assert result["scores"][0] == 1.0
+    assert result["explanations"][0] == "Correct"
+
+
+def test_extract_score_likert_nan():
+    judge = LLMJudge(llm=None, scoring_template="likert")
+    score = judge._extract_score_from_text("random text")
+    assert np.isnan(score)
+
+
+def test_extract_score_continuous_nan():
+    judge = LLMJudge(llm=None, scoring_template="continuous")
+    score = judge._extract_score_from_text("no numbers here")
+    assert np.isnan(score)
+
+
+def test_extract_score_true_false_nan():
+    judge = LLMJudge(llm=None, scoring_template="true_false_uncertain")
+    score = judge._extract_score_from_text("completely unrelated")
+    assert np.isnan(score)
+
+
+def test_invalid_scoring_template_raises():
+    with pytest.raises(ValueError):
+        LLMJudge(llm=None, scoring_template="unknown")
+
+
+def test_parse_structured_response_exception(monkeypatch):
+    judge = LLMJudge(llm=None, scoring_template="true_false_uncertain")
+
+    # Force _extract_score_from_text to raise an exception
+    monkeypatch.setattr(judge, "_extract_score_from_text", lambda x: (_ for _ in ()).throw(ValueError("bad parse")))
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        score, explanation = judge._parse_structured_response("Score: something Explanation: text")
+
+        # Assertions
+        assert np.isnan(score)
+        assert explanation == "Parsing failed - using NaN"
+        assert any("Failed to parse judge response" in str(warn.message) for warn in w)
