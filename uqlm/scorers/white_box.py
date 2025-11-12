@@ -26,6 +26,7 @@ from uqlm.utils.warn import beta_warning, deprecation_warning
 
 ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_NAMES + SAMPLED_LOGPROBS_SCORER_NAMES + ["p_true"]
 
+SCORERS_FOR_SCORING_HEADER = ["consistency_and_confidence", "semantic_negentropy", "semantic_density", "p_true"]
 
 class WhiteBoxUQ(UncertaintyQuantifier):
     def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True, device: Any = None) -> None:
@@ -71,6 +72,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         self.length_normalize = length_normalize
         self.prompts_in_nli = prompts_in_nli
         self.device = device
+        self.scorers_with_scoring_header = False
         self._validate_scorers(scorers, top_k_logprobs)
         self.multiple_logprobs = None
 
@@ -145,7 +147,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             UQResult containing prompts, responses, logprobs, and white-box UQ scores
         """
         self._construct_progress_bar(show_progress_bars)
-        self._display_scoring_header(show_progress_bars and _display_header)
+        self._display_scoring_header(show_progress_bars and _display_header and self.scorers_with_scoring_header)
 
         data = {"prompts": prompts, "responses": responses, "logprob": logprobs_results, "sampled_responses": sampled_responses, "sampled_logprob": sampled_logprobs_results}
         data = {key: val for key, val in data.items() if val}
@@ -194,3 +196,5 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize, device=self.device)
         if "p_true" in self.scorers:
             self.p_true_scorer = PTrueScorer(llm=self.llm, max_calls_per_min=self.max_calls_per_min)
+        if set(SCORERS_FOR_SCORING_HEADER) & set(self.scorers):
+            self.scorers_with_scoring_header = True
