@@ -231,7 +231,7 @@ As with the other examples, any [LangChain Chat Model](https://js.langchain.com/
 Check out our [documentation site](https://cvs-health.github.io/uqlm/latest/index.html) for detailed instructions on using this package, including API reference and more.
 
 ## Example notebooks
-Explore the following demo notebooks to see how to use UQLM for various hallucination detection methods:
+UQLM offers a broad collection of tutorial notebooks to demonstrate usage of the various scorers. These notebooks aim to have versatile coverage of various LLMs and datasets, but you can easily replace them with your LLM and dataset of choice. Below is a list of these tutorials:
 
 - [Black-Box Uncertainty Quantification](https://github.com/cvs-health/uqlm/blob/main/examples/black_box_demo.ipynb): A notebook demonstrating hallucination detection with black-box (consistency) scorers.
 - [White-Box Uncertainty Quantification (Single-Generation)](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_single_generation_demo.ipynb): A notebook demonstrating hallucination detection with white-box (token probability-based) scorers requiring only a single generation per response (fastest and cheapest).
@@ -244,8 +244,8 @@ Explore the following demo notebooks to see how to use UQLM for various hallucin
 - [Multimodal Uncertainty Quantification](https://github.com/cvs-health/uqlm/blob/main/examples/multimodal_demo.ipynb): A notebook demonstrating UQLM's scoring approach with multimodal inputs (compatible with black-box UQ and white-box UQ).
 - [Score Calibration](https://github.com/cvs-health/uqlm/blob/main/examples/score_calibration_demo.ipynb): A notebook illustrating transformation of confidence scores into calibrated probabilities that better reflect the true likelihood of correctness.
 
-## Associated Research
-A technical description of the `uqlm` scorers and extensive experiment results are contained in this **[this paper](https://arxiv.org/abs/2504.19254)**. If you use our framework or toolkit, we would appreciate citations to the following paper:
+## Citation
+A technical description of the `uqlm` scorers and extensive experimental results are presented in **[this paper](https://arxiv.org/abs/2504.19254)**. If you use our framework or toolkit, please cite:
 
 ```bibtex
 @misc{bouchard2025uncertaintyquantificationlanguagemodels,
@@ -256,5 +256,19 @@ A technical description of the `uqlm` scorers and extensive experiment results a
       archivePrefix={arXiv},
       primaryClass={cs.CL},
       url={https://arxiv.org/abs/2504.19254}, 
+}
+```
+
+The `uqlm` software package is described in this **[this paper](https://arxiv.org/abs/2507.06196)**. If you use the software, please cite:
+
+```bibtex
+@misc{bouchard2025uqlmpythonpackageuncertainty,
+      title={UQLM: A Python Package for Uncertainty Quantification in Large Language Models}, 
+      author={Dylan Bouchard and Mohit Singh Chauhan and David Skarbrevik and Ho-Kyeong Ra and Viren Bajaj and Zeya Ahmad},
+      year={2025},
+      eprint={2507.06196},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2507.06196}, 
 }
 ```
