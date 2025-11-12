@@ -239,7 +239,7 @@ class ResponseGenerator:
                     logprobs[i] = result.generations[0][i].generation_info["logprobs"]["content"]
             else:
                 warnings.warn("Model did not provide logprobs in API response. White-box scores for this response may be set to np.nan.")
-                logprobs[i] = [{'token': 'UNABLE TO GET LOGPROBS', 'logprob': np.nan, 'top_logprobs': []}]
+                logprobs[i] = [{"token": "UNABLE TO GET LOGPROBS", "logprob": np.nan, "top_logprobs": []}]
         return logprobs
 
     @staticmethod

@@ -28,6 +28,7 @@ ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_
 
 SCORERS_FOR_SCORING_HEADER = ["consistency_and_confidence", "semantic_negentropy", "semantic_density", "p_true"]
 
+
 class WhiteBoxUQ(UncertaintyQuantifier):
     def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True, device: Any = None) -> None:
         """
