@@ -65,7 +65,8 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, monte_carlo_probability, and consistency_and_confidence).
 
         device: str or torch.device input or torch.device object, default="cpu"
-            Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. Pass a torch.device to leverage GPU.
+            Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. If None, detects and returns the best available PyTorch device.
+            Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.sampling_temperature = sampling_temperature

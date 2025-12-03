@@ -58,7 +58,7 @@ class BlackBoxUQ(UncertaintyQuantifier):
 
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'noncontradiction', 'entailment', 'semantic_sets_confidence'
-            scorers. Pass a torch.device to leverage GPU.
+            scorers. If None, detects and returns the best available PyTorch device. Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
 
         use_best : bool, default=True
             Specifies whether to swap the original response for the uncertainty-minimized response
