@@ -14,9 +14,12 @@
 
 import numpy as np
 import warnings
+import torch
 from typing import Any, Dict
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from transformers import logging
+
+from uqlm.utils.device import get_best_device
 
 logging.set_verbosity_error()
 
@@ -45,6 +48,12 @@ class NLI:
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
         """
+        # Handle device detection
+        if device is None:
+            device = get_best_device()
+        elif isinstance(device, str):
+            device = torch.device(device)
+
         self.device = device
         self.verbose = verbose
         self.max_length = max_length

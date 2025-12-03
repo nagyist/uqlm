@@ -35,7 +35,7 @@ async def test_semanticentropy(monkeypatch):
     MOCKED_SAMPLED_RESPONSES = data["sampled_responses"]
 
     # Initiate SemanticEntropy class object
-    se_object = SemanticEntropy(llm=mock_object, use_best=False)
+    se_object = SemanticEntropy(llm=mock_object, use_best=False, device="cpu")
 
     async def mock_generate_original_responses(*args, **kwargs):
         se_object.logprobs = [None] * 5

@@ -29,7 +29,7 @@ def text2():
 
 @pytest.fixture
 def nli_model():
-    return NLI()
+    return NLI(device="cpu")
 
 
 @pytest.fixture
