@@ -37,8 +37,8 @@ class SemanticDensity(UncertaintyQuantifier):
             outputs before black-box comparisons.
 
         device: str or torch.device input or torch.device object, default="cpu"
-            Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'noncontradiction'
-            scorers. Pass a torch.device to leverage GPU.
+            Specifies the device that NLI model use for prediction. If None, detects and returns the best available PyTorch device. 
+            Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
 
         system_prompt : str or None, default="You are a helpful assistant."
             Optional argument for user to provide custom system prompt
