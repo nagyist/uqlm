@@ -71,8 +71,10 @@ class ClaimScorer(ABC):
     def _get_nli_agreement_scores(self, claim: str, candidate: str) -> float:
         """Compute probabilities from NLI model"""
         nli_result = self.nli.predict(hypothesis=claim, premise=candidate)
-        entail_prob = nli_result.entailment_probability
-        contradict_prob = nli_result.contradiction_probability
+        # entail_prob = nli_result.entailment_probability
+        # contradict_prob = nli_result.contradiction_probability
+        entail_prob = nli_result["entailment_score"]
+        contradict_prob = 1 - nli_result["noncontradiction_score"]
         contrast_entail_prob = entail_prob / (entail_prob + contradict_prob)
         return entail_prob, (1 - contradict_prob), contrast_entail_prob
 
