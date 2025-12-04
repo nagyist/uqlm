@@ -67,7 +67,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. If None, detects and returns the best available PyTorch device.
             Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
-            
+
         max_length : int, default=2000
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
