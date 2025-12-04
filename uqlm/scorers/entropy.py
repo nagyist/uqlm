@@ -110,7 +110,7 @@ class SemanticEntropy(UncertaintyQuantifier):
         self.sampling_temperature = sampling_temperature
         self.best_response_selection = best_response_selection
         self.return_responses = return_responses
-        self._setup_nli(nli_model_name)
+        self._setup_semantic_scorer(nli_model_name)
         self.prompts = None
         self.logprobs = None
         self.multiple_logprobs = None
