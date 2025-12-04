@@ -30,7 +30,7 @@ SCORERS_FOR_SCORING_HEADER = ["consistency_and_confidence", "semantic_negentropy
 
 
 class WhiteBoxUQ(UncertaintyQuantifier):
-    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True, device: Any = None) -> None:
+    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True, device: Any = None, max_length: int = 2000) -> None:
         """
         Class for computing white-box UQ confidence scores. This class offers two confidence scores, normalized
         probability :footcite:`malinin2021uncertaintyestimationautoregressivestructured` and minimum probability :footcite:`manakul2023selfcheckgptzeroresourceblackboxhallucination`.
@@ -67,6 +67,10 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. If None, detects and returns the best available PyTorch device.
             Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
+            
+        max_length : int, default=2000
+            Specifies the maximum allowed string length. Responses longer than this value will be truncated to
+            avoid OutOfMemoryError
         """
         super().__init__(llm=llm, max_calls_per_min=max_calls_per_min, system_prompt=system_prompt)
         self.sampling_temperature = sampling_temperature
@@ -74,6 +78,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         self.length_normalize = length_normalize
         self.prompts_in_nli = prompts_in_nli
         self.device = device
+        self.max_length = max_length
         self.scorers_with_scoring_header = False
         self._validate_scorers(scorers, top_k_logprobs)
         self.multiple_logprobs = None
@@ -195,7 +200,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
             self.top_k_logprobs = top_k_logprobs
             beta_warning("Scorers based on top_logprobs ('mean_token_negentropy','min_token_negentropy','probability_margin') is in beta. Please use with caution as it may change in future releases.")
         if self.sampled_logprobs_scorer_names:
-            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize, device=self.device)
+            self.sampled_logprobs_scorer = SampledLogprobsScorer(scorers=self.sampled_logprobs_scorer_names, llm=self.llm, prompts_in_nli=self.prompts_in_nli, length_normalize=self.length_normalize, device=self.device, max_length=self.max_length)
         if "p_true" in self.scorers:
             self.p_true_scorer = PTrueScorer(llm=self.llm, max_calls_per_min=self.max_calls_per_min)
         if set(SCORERS_FOR_SCORING_HEADER) & set(self.scorers):
