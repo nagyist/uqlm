@@ -26,7 +26,7 @@ sampled_responses = data["sampled_responses"]
 
 
 def test_bert():
-    bert = BertScorer()
+    bert = BertScorer(device="cpu")
     bert_result = bert.evaluate(responses=responses, sampled_responses=sampled_responses)
     assert all([abs(bert_result[i] - data["bert_result"][i]) < 1e-5 for i in range(len(bert_result))])
 
