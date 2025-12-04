@@ -21,15 +21,15 @@ from rich.progress import Progress, TextColumn
 from rich.errors import LiveError
 
 from uqlm.utils.response_generator import ResponseGenerator
-from uqlm.black_box.semantic import SemanticScorer
+from uqlm.nli.nli import NLI
 from uqlm.judges.judge import LLMJudge
 from uqlm.utils.display import ConditionalBarColumn, ConditionalTimeElapsedColumn, ConditionalTextColumn, ConditionalSpinnerColumn
 
 DEFAULT_BLACK_BOX_SCORERS = ["semantic_negentropy", "noncontradiction", "exact_match", "cosine_sim"]
-DEFAULT_LONG_FORM_SCORERS = ["luq_atomic"]
-BLACK_BOX_SCORERS = DEFAULT_BLACK_BOX_SCORERS + ["bert_score"]
 
-WHITE_BOX_SCORERS = ["normalized_probability", "min_probability"]
+BLACK_BOX_SCORERS = DEFAULT_BLACK_BOX_SCORERS + ["bert_score", "entailment", "semantic_sets_confidence"]
+
+DEFAULT_WHITE_BOX_SCORERS = ["normalized_probability", "min_probability"]
 
 
 class UncertaintyQuantifier:
@@ -70,14 +70,13 @@ class UncertaintyQuantifier:
         self.max_calls_per_min = max_calls_per_min
         self.use_n_param = use_n_param
         self.black_box_names = BLACK_BOX_SCORERS
-        self.white_box_names = WHITE_BOX_SCORERS
+        self.white_box_names = DEFAULT_WHITE_BOX_SCORERS
         self.default_black_box_names = DEFAULT_BLACK_BOX_SCORERS
-        self.default_long_form_names = DEFAULT_LONG_FORM_SCORERS
         self.progress_bar = None
         self.raw_responses = None
         self.raw_sampled_responses = None
 
-    async def generate_original_responses(self, prompts: List[Union[str, List[BaseMessage]]], progress_bar: Optional[Progress] = None) -> List[str]:
+    async def generate_original_responses(self, prompts: List[Union[str, List[BaseMessage]]], top_k_logprobs: Optional[int] = None, progress_bar: Optional[Progress] = None) -> List[str]:
         """
         This method generates original responses for uncertainty
         estimation. If specified in the child class, all responses are postprocessed
@@ -97,7 +96,7 @@ class UncertaintyQuantifier:
         list of str
             A list of original responses for each prompt.
         """
-        generations = await self._generate_responses(prompts, count=1, progress_bar=progress_bar)
+        generations = await self._generate_responses(prompts, count=1, top_k_logprobs=top_k_logprobs, progress_bar=progress_bar)
         responses = generations["responses"]
         self.logprobs = generations["logprobs"]
         if self.postprocessor:
@@ -129,7 +128,7 @@ class UncertaintyQuantifier:
             A list of sampled responses for each prompt.
         """
         llm_temperature = self.llm.temperature
-        generations = await self._generate_responses(prompts=prompts, count=num_responses, temperature=self.sampling_temperature, progress_bar=progress_bar)
+        generations = await self._generate_responses(prompts=prompts, count=num_responses, temperature=self.sampling_temperature, top_k_logprobs=None, progress_bar=progress_bar)
         tmp_mr, tmp_lp = generations["responses"], generations["logprobs"]
         sampled_responses, self.multiple_logprobs = [], []
         for i in range(len(prompts)):
@@ -142,7 +141,7 @@ class UncertaintyQuantifier:
         self.llm.temperature = llm_temperature
         return sampled_responses
 
-    async def _generate_responses(self, prompts: List[Union[str, List[BaseMessage]]], count: int, temperature: float = None, progress_bar: Optional[Progress] = None) -> List[str]:
+    async def _generate_responses(self, prompts: List[Union[str, List[BaseMessage]]], count: int, temperature: float = None, top_k_logprobs: Optional[int] = None, progress_bar: Optional[Progress] = None) -> List[str]:
         """Helper function to generate responses with LLM"""
         try:
             if self.llm is None:
@@ -150,7 +149,7 @@ class UncertaintyQuantifier:
             llm_temperature = self.llm.temperature
             if temperature:
                 self.llm.temperature = temperature
-            generator_object = ResponseGenerator(llm=self.llm, max_calls_per_min=self.max_calls_per_min, use_n_param=self.use_n_param)
+            generator_object = ResponseGenerator(llm=self.llm, max_calls_per_min=self.max_calls_per_min, use_n_param=self.use_n_param, top_k_logprobs=top_k_logprobs)
             with contextlib.redirect_stdout(io.StringIO()):
                 generations = await generator_object.generate_responses(prompts=prompts, count=count, system_prompt=self.system_prompt, progress_bar=progress_bar)
             self.llm.temperature = llm_temperature
@@ -173,9 +172,9 @@ class UncertaintyQuantifier:
         else:
             return LLMJudge(llm=llm)
 
-    def _setup_semantic_scorer(self, nli_model_name: Any) -> None:
-        """Set up Semantic scorer"""
-        self.semantic_scorer = SemanticScorer(nli_model_name=self.nli_model_name, device=self.device, max_length=self.max_length, verbose=self.verbose)
+    def _setup_nli(self, nli_model_name: Any) -> None:
+        """Set up NLI model"""
+        self.nli = NLI(nli_model_name=nli_model_name, device=self.device, max_length=self.max_length, verbose=self.verbose)
 
     def _update_best(self, best_responses: List[str], include_logprobs: bool = True) -> None:
         """Updates best"""
@@ -238,7 +237,7 @@ class UncertaintyQuantifier:
         """Displays generation header"""
         if show_progress_bars and self.progress_bar:
             try:
-                display_text = "🤖 Generation" if not white_box else "🤖📈 Generation & Scoring"
+                display_text = "🤖 Generation" if not white_box else "🤖🧮 Generation with Logprobs"
                 self.progress_bar.add_task(display_text)
             except (AttributeError, RuntimeError, OSError):
                 # If progress bar fails, just continue without it
