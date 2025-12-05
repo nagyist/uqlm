@@ -39,7 +39,7 @@ def mock_llm():
 @pytest.mark.flaky(reruns=3)
 @pytest.mark.asyncio
 async def test_bbuq(monkeypatch, mock_llm):
-    uqe = BlackBoxUQ(llm=mock_llm, scorers=["noncontradiction", "exact_match", "semantic_negentropy"])
+    uqe = BlackBoxUQ(llm=mock_llm, scorers=["noncontradiction", "exact_match", "semantic_negentropy"], device="cpu")
 
     async def mock_generate_original_responses(*args, **kwargs):
         uqe.logprobs = [None] * 5
@@ -64,10 +64,10 @@ async def test_bbuq(monkeypatch, mock_llm):
 
     # Test invalid scorer
     with pytest.raises(ValueError):
-        BlackBoxUQ(llm=mock_llm, scorers=["invalid_scorer"])
+        BlackBoxUQ(llm=mock_llm, scorers=["invalid_scorer"], device="cpu")
 
     # Test default scorers
-    uqe_default = BlackBoxUQ(llm=mock_llm, scorers=None)
+    uqe_default = BlackBoxUQ(llm=mock_llm, scorers=None, device="cpu")
     assert len(uqe_default.scorers) == len(DEFAULT_BLACK_BOX_SCORERS)
 
-    BlackBoxUQ(llm=mock_llm, scorers=["bert_score"])
+    BlackBoxUQ(llm=mock_llm, scorers=["bert_score"], device="cpu")

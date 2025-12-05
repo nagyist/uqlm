@@ -161,3 +161,97 @@ async def test_multiple_logprobs_and_temperature(monkeypatch):
     assert result is not None
     assert "responses" in result
     assert "logprobs" in result
+
+
+@pytest.mark.asyncio
+async def test_generate_responses_exception(monkeypatch):
+    uq = UncertaintyQuantifier(llm=mock_object)
+
+    class MockProgress:
+        def stop(self):
+            setattr(self, "stopped", True)
+
+    uq.progress_bar = MockProgress()
+
+    async def mock_generate(*args, **kwargs):
+        raise RuntimeError("Simulated failure")
+
+    monkeypatch.setattr("uqlm.utils.response_generator.ResponseGenerator.generate_responses", mock_generate)
+
+    with pytest.raises(RuntimeError, match="Simulated failure"):
+        await uq._generate_responses(prompts=["test"], count=1, progress_bar=uq.progress_bar)
+    assert hasattr(uq.progress_bar, "stopped")
+
+
+def test_update_best_with_raw(monkeypatch):
+    uq = UncertaintyQuantifier(llm=mock_object, postprocessor=lambda x: x)
+    uq.responses = ["r1"]
+    uq.sampled_responses = [["r2", "r3"]]
+    uq.logprobs = [0.1]
+    uq.multiple_logprobs = [[0.2, 0.3]]
+    uq.raw_responses = ["raw_r1"]
+    uq.raw_sampled_responses = [["raw_r2", "raw_r3"]]
+
+    uq._update_best(["r2"])
+    assert uq.raw_responses == ["raw_r2"]
+    assert uq.raw_sampled_responses == [["raw_r1", "raw_r3"]]
+
+
+def test_construct_black_box_return_data_variants():
+    uq = UncertaintyQuantifier(llm=mock_object, postprocessor=lambda x: x)
+    uq.responses = ["r1"]
+    uq.sampled_responses = [["r2", "r3"]]
+    uq.raw_responses = ["raw_r1"]
+    uq.raw_sampled_responses = [["raw_r2", "raw_r3"]]
+    uq.prompts = ["prompt1"]
+
+    # Case: return_responses = "all"
+    uq.return_responses = "all"
+    result = uq._construct_black_box_return_data()
+    assert "raw_responses" in result
+    assert "prompts" in result
+
+    # Case: return_responses = "raw"
+    uq.return_responses = "raw"
+    result = uq._construct_black_box_return_data()
+    assert result["responses"] == uq.raw_responses
+    assert result["sampled_responses"] == uq.raw_sampled_responses
+
+
+def test_progress_bar_exceptions(monkeypatch):
+    uq = UncertaintyQuantifier(llm=mock_object)
+
+    class FaultyProgress:
+        def start(self):
+            raise AttributeError("start failed")
+
+        def stop(self):
+            raise RuntimeError("stop failed")
+
+        def add_task(self, *args, **kwargs):
+            raise OSError("add_task failed")
+
+        live = None
+
+    # Inject faulty progress bar
+    uq.progress_bar = FaultyProgress()
+
+    # Test _construct_progress_bar with faulty start
+    try:
+        uq._construct_progress_bar(show_progress_bars=True, _existing_progress_bar=uq.progress_bar)
+    except AttributeError:
+        pass  # Expected
+
+    # Test display headers with faulty add_task
+    try:
+        uq._display_generation_header(show_progress_bars=True)
+        uq._display_scoring_header(show_progress_bars=True)
+        uq._display_optimization_header(show_progress_bars=True)
+    except OSError:
+        pass
+
+    # Test stop progress bar with faulty stop
+    try:
+        uq._stop_progress_bar()
+    except RuntimeError:
+        pass

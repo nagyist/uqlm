@@ -19,10 +19,12 @@ from uqlm.utils.postprocessors import math_postprocessor
 from uqlm.utils.response_generator import ResponseGenerator
 from uqlm.utils.results import UQResult
 from uqlm.utils.tuner import Tuner
+from uqlm.utils.grader import LLMGrader
 from uqlm.utils.llm_config import save_llm_config, load_llm_config
 from uqlm.utils.display import ConditionalBarColumn, ConditionalTimeElapsedColumn, ConditionalTextColumn, ConditionalSpinnerColumn
+from uqlm.utils.warn import beta_warning, deprecation_warning
+from uqlm.utils.device import get_best_device
 from uqlm.utils.warn import beta_warning
-from uqlm.utils.nli import NLI
 from uqlm.utils.prompts import TEMPLATE_TO_INSTRUCTION, TEMPLATE_TO_INSTRUCTION_WITH_EXPLANATIONS, SCORING_CONFIG, COMMON_INSTRUCTIONS, PROMPT_TEMPLATES, create_instruction, get_claim_breakdown_prompt, get_entailment_prompt
 
 __all__ = [
@@ -36,6 +38,7 @@ __all__ = [
     "ResponseGenerator",
     "UQResult",
     "Tuner",
+    "LLMGrader",
     "save_llm_config",
     "load_llm_config",
     "ConditionalBarColumn",
@@ -43,7 +46,8 @@ __all__ = [
     "ConditionalTextColumn",
     "ConditionalSpinnerColumn",
     "beta_warning",
-    "NLI",
+    "deprecation_warning",
+    "get_best_device",
     "TEMPLATE_TO_INSTRUCTION",
     "TEMPLATE_TO_INSTRUCTION_WITH_EXPLANATIONS",
     "SCORING_CONFIG",

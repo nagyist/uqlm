@@ -16,10 +16,11 @@ import pytest
 import json
 import tempfile
 import os
-import unittest
+from langchain_core.language_models.chat_models import BaseChatModel
 from unittest.mock import patch, MagicMock
 from uqlm.scorers import UQEnsemble
 from uqlm.utils.results import UQResult
+from unittest.mock import AsyncMock
 from uqlm.utils.llm_config import save_llm_config, load_llm_config
 from langchain_openai import AzureChatOpenAI
 
@@ -39,12 +40,20 @@ MOCKED_LOGPROBS = metadata["logprobs"]
 
 @pytest.fixture
 def mock_llm():
-    """Extract judge object using pytest.fixture."""
-    return AzureChatOpenAI(deployment_name="YOUR-DEPLOYMENT", temperature=1, api_key="SECRET_API_KEY", api_version="2024-05-01-preview", azure_endpoint="https://mocked.endpoint.com")
+    mock_llm_instance = MagicMock(spec=AzureChatOpenAI)
+    mock_llm_instance.score = AsyncMock(return_value=UQResult({"data": {"judge_1": MOCKED_JUDGE_SCORES}}))
+    mock_llm_instance.generate = AsyncMock(return_value=MOCKED_RESPONSES)
+    mock_llm_instance.temperature = 1
+    mock_llm_instance.api_key = "SECRET_API_KEY"
+    mock_llm_instance.api_version = "2024-05-01-preview"
+    mock_llm_instance.azure_endpoint = "https://mocked.endpoint.com"
+    mock_llm_instance.deployment_name = "YOUR-DEPLOYMENT"
+    mock_llm_instance.logprobs = MOCKED_LOGPROBS
+    return mock_llm_instance
 
 
 def test_validate_grader(mock_llm):
-    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match"])
+    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match"], device="cpu")
     uqe._validate_grader(None)
 
     with pytest.raises(ValueError) as value_error:
@@ -58,14 +67,14 @@ def test_validate_grader(mock_llm):
 
 def test_wrong_components(mock_llm):
     with pytest.raises(ValueError) as value_error:
-        UQEnsemble(llm=mock_llm, scorers=["eaxct_match"])
+        UQEnsemble(llm=mock_llm, scorers=["eaxct_match"], device="cpu")
     assert "Components must be an instance of LLMJudge, BaseChatModel" in str(value_error.value)
 
 
 @pytest.mark.asyncio
 async def test_error_sampled_response(mock_llm):
     with pytest.raises(ValueError) as value_error:
-        uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match"])
+        uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match"], device="cpu")
         await uqe.score(prompts=PROMPTS, responses=MOCKED_RESPONSES)
     assert "sampled_responses must be provided if using black-box scorers" == str(value_error.value)
 
@@ -73,25 +82,27 @@ async def test_error_sampled_response(mock_llm):
 @pytest.mark.asyncio
 async def test_error_logprobs_results(mock_llm):
     with pytest.raises(ValueError) as value_error:
-        uqe = UQEnsemble(llm=mock_llm, scorers=["min_probability"])
+        uqe = UQEnsemble(llm=mock_llm, scorers=["min_probability"], device="cpu")
         await uqe.score(prompts=PROMPTS, responses=MOCKED_RESPONSES)
     assert "logprobs_results must be provided if using white-box scorers" == str(value_error.value)
 
 
 def test_wrong_weights(mock_llm):
     with pytest.raises(ValueError) as value_error:
-        UQEnsemble(llm=mock_llm, scorers=["exact_match"], weights=[0.5, 0.5])
+        UQEnsemble(llm=mock_llm, scorers=["exact_match"], weights=[0.5, 0.5], device="cpu")
     assert "Must have same number of weights as components" in str(value_error.value)
 
 
 def test_bsdetector_weights(mock_llm):
-    uqe = UQEnsemble(llm=mock_llm)
+    uqe = UQEnsemble(llm=mock_llm, device="cpu")
     assert uqe.weights == [0.7 * 0.8, 0.7 * 0.2, 0.3]
 
 
 @pytest.mark.asyncio
 async def test_ensemble(monkeypatch, mock_llm):
-    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction", "min_probability", mock_llm])
+    mock_scorer = MagicMock(spec=BaseChatModel)
+    mock_scorer.score = AsyncMock(return_value=UQResult({"data": {"judge_1": MOCKED_JUDGE_SCORES}}))
+    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction", "min_probability", mock_scorer], device="cpu")
 
     async def mock_generate_original_responses(*args, **kwargs):
         uqe.logprobs = MOCKED_LOGPROBS
@@ -128,7 +139,7 @@ async def test_ensemble(monkeypatch, mock_llm):
     def mock_tune_params(*args, **kwargs):
         return tune_results
 
-    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction", mock_llm])
+    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction", mock_llm], device="cpu")
 
     monkeypatch.setattr(uqe.tuner, "tune_params", mock_tune_params)
     monkeypatch.setattr(uqe, "generate_original_responses", mock_generate_original_responses)
@@ -139,7 +150,8 @@ async def test_ensemble(monkeypatch, mock_llm):
         result = await uqe.tune(prompts=PROMPTS, ground_truth_answers=[PROMPTS[0]] + [" "] * len(PROMPTS[:-1]), grader_function=lambda response, answer: response == answer, show_progress_bars=show_progress_bars)
         assert result.metadata["thresh"] == tune_results["thresh"]
 
-    @unittest.skipIf(os.getenv("CI"), "Skipping test in CI environment")
+    # @unittest.skipIf(os.getenv("CI"), "Skipping test in CI environment")
+    @pytest.mark.skipif((os.getenv("CI") == "true"), reason="Skipping test in macOS CI due to connection issues.")
     async def test_tune_with_default_grader():
         result = await uqe.tune(prompts=PROMPTS, ground_truth_answers=PROMPTS, show_progress_bars=False)
         assert result.metadata["thresh"] == tune_results["thresh"]
@@ -157,7 +169,7 @@ async def test_ensemble2(monkeypatch, mock_llm):
     MOCKED_RESPONSES = data["responses"]
     MOCKED_JUDGE_SCORES = data["judge_1"]
     MOCKED_LOGPROBS = metadata["logprobs"]
-    uqe = UQEnsemble(llm=mock_llm, scorers=["min_probability", mock_llm])
+    uqe = UQEnsemble(llm=mock_llm, scorers=["min_probability", mock_llm], device="cpu")
 
     async def mock_generate_original_responses(*args, **kwargs):
         uqe.logprobs = MOCKED_LOGPROBS
@@ -183,7 +195,7 @@ async def test_default_logprob(monkeypatch, mock_llm):
     async def mock_judge_scores(*args, **kwargs):
         return UQResult({"data": {"judge_1": MOCKED_JUDGE_SCORES}})
 
-    uqe = UQEnsemble(llm=mock_llm, scorers=[mock_llm])
+    uqe = UQEnsemble(llm=mock_llm, scorers=[mock_llm], device="cpu")
     monkeypatch.setattr(uqe.judges_object, "score", mock_judge_scores)
     await uqe.score(prompts=PROMPTS, responses=MOCKED_RESPONSES, logprobs_results=None)
     assert list(set(uqe.logprobs)) == [None]
@@ -193,7 +205,7 @@ async def test_default_logprob(monkeypatch, mock_llm):
 def test_print_ensemble_weights(mock_llm):
     """Test that print_ensemble_weights method works correctly"""
 
-    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction"])
+    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction"], device="cpu")
     uqe.component_names = ["exact_match", "noncontradiction"]
     uqe.weights = [0.6, 0.4]
 
@@ -208,7 +220,7 @@ def test_print_ensemble_weights(mock_llm):
 def test_print_ensemble_weights_sorting(mock_llm):
     """Test that print_ensemble_weights sorts weights in descending order"""
 
-    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction"])
+    uqe = UQEnsemble(llm=mock_llm, scorers=["exact_match", "noncontradiction"], device="cpu")
     uqe.component_names = ["exact_match", "noncontradiction", "judge_1"]
     uqe.weights = [0.2, 0.5, 0.3]  # Should be sorted to [0.5, 0.3, 0.2]
 
@@ -284,7 +296,7 @@ class TestUQEnsembleConfig:
     @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_save_config_named_components_only(self):
         """Test save_config with only named string components"""
-        ensemble = UQEnsemble(llm=self.mock_llm, scorers=["exact_match", "noncontradiction"], weights=[0.6, 0.4], thresh=0.75)
+        ensemble = UQEnsemble(llm=self.mock_llm, scorers=["exact_match", "noncontradiction"], weights=[0.6, 0.4], thresh=0.75, device="cpu")
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             config_path = f.name
@@ -310,7 +322,7 @@ class TestUQEnsembleConfig:
         """Test save_config with LLM scorer components"""
         judge_llm = AzureChatOpenAI(deployment_name="judge-deployment", temperature=0.3, max_tokens=256, api_key="judge-key", api_version="2024-05-01-preview", azure_endpoint="https://judge.endpoint.com")
 
-        ensemble = UQEnsemble(llm=self.mock_llm, scorers=["exact_match", judge_llm], weights=[0.7, 0.3], thresh=0.6)
+        ensemble = UQEnsemble(llm=self.mock_llm, scorers=["exact_match", judge_llm], weights=[0.7, 0.3], thresh=0.6, device="cpu")
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             config_path = f.name
@@ -333,7 +345,7 @@ class TestUQEnsembleConfig:
     @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     def test_save_config_no_main_llm(self):
         """Test save_config when no main LLM is provided"""
-        ensemble = UQEnsemble(scorers=["exact_match", "noncontradiction"], weights=[0.5, 0.5], thresh=0.8)
+        ensemble = UQEnsemble(scorers=["exact_match", "noncontradiction"], weights=[0.5, 0.5], thresh=0.8, device="cpu")
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             config_path = f.name
@@ -354,7 +366,7 @@ class TestUQEnsembleConfig:
         """Test save_config with invalid component type"""
         invalid_component = {"invalid": "component"}
 
-        ensemble = UQEnsemble(scorers=["exact_match"])
+        ensemble = UQEnsemble(scorers=["exact_match"], device="cpu")
         ensemble.components = ["exact_match", invalid_component]  # Manually add invalid component
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:

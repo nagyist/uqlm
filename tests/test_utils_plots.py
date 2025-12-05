@@ -15,6 +15,7 @@
 import os
 import pytest
 import numpy as np
+import warnings
 import matplotlib
 from unittest.mock import patch
 from uqlm.utils.results import UQResult
@@ -22,6 +23,9 @@ from uqlm.utils.plots import plot_filtered_accuracy, plot_model_accuracies, plot
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+# Suppress matplotlib non-interactive backend warnings in tests
+warnings.filterwarnings("ignore", message="FigureCanvasAgg is non-interactive", category=UserWarning, module="matplotlib")
 
 
 # Dummy Method_Names and Ignore_Columns for testing
@@ -31,6 +35,7 @@ Ignore_Columns = ["responses"]
 # Tests for plot_model_accuracies()
 
 
+@pytest.mark.filterwarnings("ignore:FigureCanvasAgg is non-interactive:UserWarning")
 def test_plot_model_accuracies_basic():
     """Test that the function runs successfully with valid inputs"""
     scores = np.array([0.1, 0.4, 0.35, 0.8])
@@ -51,6 +56,7 @@ def test_plot_model_accuracies_value_error():
         plot_model_accuracies(scores, correct_indicators, thresholds)
 
 
+@pytest.mark.filterwarnings("ignore:FigureCanvasAgg is non-interactive:UserWarning")
 def test_plot_model_accuracies_with_write_path():
     """Test that the function works when saving the plot to a file"""
     scores = np.array([0.1, 0.4, 0.35, 0.8])

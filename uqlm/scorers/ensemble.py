@@ -29,6 +29,7 @@ from uqlm.utils.results import UQResult
 from uqlm.scorers.panel import LLMPanel
 from uqlm.scorers.black_box import BlackBoxUQ
 from uqlm.scorers.white_box import WhiteBoxUQ
+from uqlm.utils.grader import LLMGrader
 from uqlm.utils.tuner import Tuner
 from uqlm.utils.llm_config import save_llm_config, load_llm_config
 
@@ -36,7 +37,7 @@ from uqlm.utils.llm_config import save_llm_config, load_llm_config
 class UQEnsemble(UncertaintyQuantifier):
     def __init__(
         self,
-        llm=None,
+        llm: Optional[BaseChatModel] = None,
         scorers: Optional[List[Union[str, BaseChatModel, LLMJudge]]] = None,
         device: Any = None,
         postprocessor: Any = None,
@@ -51,6 +52,7 @@ class UQEnsemble(UncertaintyQuantifier):
         scoring_templates: Optional[List[str]] = None,
         max_length: int = 2000,
         verbose: bool = False,
+        grader_llm: Optional[BaseChatModel] = None,
         return_responses: str = "all",
     ) -> None:
         """
@@ -62,14 +64,16 @@ class UQEnsemble(UncertaintyQuantifier):
             A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
             relevant parameters to the constructor of their `llm` object.
 
-        scorers : List containing instances of BaseChatModel, LLMJudge, black-box scorer names from ['semantic_negentropy', 'noncontradiction','exact_match', 'bert_score', 'cosine_sim'], or white-box scorer names from ["normalized_probability", "min_probability"] default=None
-            Specifies which UQ components to include. If None, defaults to the off-the-shelf BS Detector ensemble by
-            Chen and Mueller (2023) :footcite:`chen2023quantifyinguncertaintyanswerslanguage` which uses components
-            ["noncontradiction", "exact_match","self_reflection"] with respective weights of [0.56, 0.14, 0.3]
+        scorers : List[Union[str, BaseChatModel]] default=None
+            Specifies which UQ components to include. List containing instances of BaseChatModel, LLMJudge, black-box scorer names from
+            ['semantic_negentropy', 'noncontradiction','exact_match', 'bert_score', 'cosine_sim'], or white-box scorer names from
+            ["normalized_probability", "min_probability"] (other white-box scorers not yet supported). If None, defaults to the
+            off-the-shelf BS Detector ensemble by Chen and Mueller (2023) :footcite:`chen2023quantifyinguncertaintyanswerslanguage`
+            which uses components ["noncontradiction", "exact_match", llm] with respective weights of [0.56, 0.14, 0.3]
 
         device : str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'noncontradiction'
-            scorers. Pass a torch.device to leverage GPU.
+            scorers. If None, detects and returns the best available PyTorch device. Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
 
         postprocessor : callable, default=None
             A user-defined function that takes a string input and returns a string. Used for postprocessing
@@ -135,6 +139,7 @@ class UQEnsemble(UncertaintyQuantifier):
         self.tuner = Tuner()
         self._validate_components(scorers)
         self._validate_weights()
+        self.grader_llm = llm if not grader_llm else grader_llm
 
     async def generate_and_score(self, prompts: List[Union[str, List[BaseMessage]]], num_responses: int = 5, show_progress_bars: Optional[bool] = True, _existing_progress_bar: Optional[rich.progress.Progress] = None) -> UQResult:
         """
@@ -237,7 +242,7 @@ class UQEnsemble(UncertaintyQuantifier):
                 self._update_best(black_box_results.data["responses"])
 
         if self.white_box_components:
-            white_box_results = self.white_box_object.score(logprobs_results=self.logprobs)
+            white_box_results = await self.white_box_object.score(logprobs_results=self.logprobs, show_progress_bars=False)
 
         if self.judges:
             self._start_progress_bar()
@@ -354,7 +359,7 @@ class UQEnsemble(UncertaintyQuantifier):
 
         self._start_progress_bar()
         self._display_optimization_header(show_progress_bars)
-        correct_indicators = self._grade_responses(ground_truth_answers=ground_truth_answers, grader_function=grader_function)
+        correct_indicators = await self._grade_responses(ground_truth_answers=ground_truth_answers, grader_function=grader_function)
         tuned_result = self.tune_from_graded(correct_indicators=correct_indicators, weights_objective=weights_objective, thresh_bounds=thresh_bounds, thresh_objective=thresh_objective, n_trials=n_trials, step_size=step_size, fscore_beta=fscore_beta, show_progress_bars=show_progress_bars)
         self._stop_progress_bar()
         return tuned_result
@@ -458,24 +463,20 @@ class UQEnsemble(UncertaintyQuantifier):
 
         return cls(llm=llm, scorers=components, weights=config["weights"], thresh=config["thresh"])
 
-    def _grade_responses(self, ground_truth_answers: List[str], grader_function: Any = None) -> List[Any]:
+    async def _grade_responses(self, ground_truth_answers: List[str], grader_function: Any = None) -> List[Any]:
         """Grade LLM responses against provided ground truth answers using provided grader function"""
         if grader_function:
             correct_indicators = []
             if self.progress_bar:
-                progress_task = self.progress_bar.add_task("  - [black]Grading responses against provided ground truth answers...", total=len(ground_truth_answers))
+                progress_task = self.progress_bar.add_task("  - Grading responses against provided ground truth answers...", total=len(ground_truth_answers))
             for r, a in zip(self.responses, ground_truth_answers):
                 correct_indicators.append(grader_function(r, a))
                 if self.progress_bar:
                     self.progress_bar.update(progress_task, advance=1)
             time.sleep(0.1)
         else:
-            if self.progress_bar:
-                progress_task = self.progress_bar.add_task("  - [black]Grading responses against provided ground truth answers with default grader...", total=len(ground_truth_answers))
-            self._construct_hhem()  # use vectara hhem if no grader is provided
-            pairs = [(a, r) for a, r in zip(ground_truth_answers, self.responses)]
-            halluc_scores = self.hhem.predict(pairs)
-            correct_indicators = [(s > 0.5) * 1 for s in halluc_scores]
+            llm_grader = LLMGrader(llm=self.grader_llm)
+            correct_indicators = await llm_grader.grade_responses(prompts=self.prompts, responses=self.responses, answers=ground_truth_answers, progress_bar=self.progress_bar)
         return correct_indicators
 
     def _construct_result(self) -> Any:
@@ -551,13 +552,8 @@ class UQEnsemble(UncertaintyQuantifier):
         weights = weights if weights else [1] * len(self.components)
         return list(self.tuner._normalize_weights(weights))
 
-    def _construct_hhem(self):
-        from transformers import AutoModelForSequenceClassification
-
-        self.hhem = AutoModelForSequenceClassification.from_pretrained("vectara/hallucination_evaluation_model", trust_remote_code=True)
-
     @staticmethod
-    def _validate_grader(grader_function: Any) -> bool:
+    def _validate_grader(grader_function) -> bool:
         "Validate that grader function is valid"
         if grader_function is None:
             pass
@@ -566,6 +562,9 @@ class UQEnsemble(UncertaintyQuantifier):
             params = sig.parameters
             if "response" not in params or "answer" not in params:
                 raise ValueError("grader_function must have 'response' and 'answer' parameters")
-            check_val = grader_function("a", "b")
+            try:
+                check_val = grader_function(response="a", answer="b")
+            except Exception:
+                check_val = grader_function(response="a", answer=["b"])
             if not isinstance(check_val, bool):
                 raise ValueError("grader_function must return boolean")

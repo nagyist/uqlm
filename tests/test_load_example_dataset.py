@@ -15,7 +15,6 @@
 import os
 import platform
 import pytest
-import unittest
 import pandas as pd
 from uqlm.utils.dataloader import load_example_dataset, list_dataset_names, _combine_question_and_choices
 from uqlm.utils.dataloader import _dataset_processing
@@ -32,7 +31,8 @@ def test_load_nonexistent_dataset():
         load_example_dataset("nonexistent_dataset")
 
 
-@unittest.skipIf(((os.getenv("CI") == "true") & (platform.system() == "Darwin")), "Skipping test in macOS CI due to connection issues.")
+# @unittest.skipIf(((os.getenv("CI") == "true") & (platform.system() == "Darwin")), "Skipping test in macOS CI due to connection issues.")
+@pytest.mark.skipif(((os.getenv("CI") == "true") & (platform.system() == "Darwin")), reason="Skipping test in macOS CI due to connection issues.")
 @pytest.mark.flaky(reruns=3)
 def test_load_dataset_with_processing():
     df = load_example_dataset("gsm8k", n=100, cols=["question", "answer"])
@@ -60,7 +60,8 @@ def test_combine_question_and_choices_list_case():
     assert len(result) == 1
 
 
-@unittest.skipIf(((os.getenv("CI") == "true") & (platform.system() == "Darwin")), "Skipping test in macOS CI due to connection issues.")
+# @unittest.skipIf(((os.getenv("CI") == "true") & (platform.system() == "Darwin")), "Skipping test in macOS CI due to connection issues.")
+@pytest.mark.skipif(((os.getenv("CI") == "true") & (platform.system() == "Darwin")), reason="Skipping test in macOS CI due to connection issues.")
 @pytest.mark.flaky(reruns=3)
 def test_load_example_dataset_with_concat_all():
     # test the if split == “all”: branch and concatenate_datasets call
