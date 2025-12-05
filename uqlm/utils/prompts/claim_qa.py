@@ -186,25 +186,25 @@ def get_factoid_template(response: str) -> str:
 #     """
 
 #     question_template = f"""
-    
+
 #     Following this text:
-    
+
 #     {response}
-    
+
 #     You see the sentence:
 
 #     {factoid_i}
-    
+
 #     Generate a list of {num_questions} questions, that might have generated the sentence in the context of the preceding original text. Please do not use specific facts that appear in the follow-up sentence when formulating the question. Make the questions and answers diverse. Avoid yes-no questions. Output each question in one single line starting with ###. Do not include other formatting.
 
 #     You should only return the final answer. Now your answer is:
 #     """
 
-    # return question_template
+# return question_template
 
 # def get_question_template(
-#     # response: str, 
-#     factoid_i: str, 
+#     # response: str,
+#     factoid_i: str,
 #     # num_questions: int = 3
 # ) -> str:
 #     """
@@ -232,24 +232,24 @@ def get_factoid_template(response: str) -> str:
 #     - The question should be specific enough that someone knowledgeable in the domain would converge on this exact claim
 #     - The question should not give away the answer in its phrasing
 #     - Return ONLY the question with no additional text
-    
+
 #     ## Examples
 #     Atomic Claim: "The Eiffel Tower was completed in 1889."
 
 #     - Poor Question: "Was the Eiffel Tower completed in 1889 or 1890?" (Gives away the answer)
 #     - Poor Question: "What structure was completed in 1889" (Eiffel Tower is not the only valid answer)
 #     - Good Question: "In what year was construction of the Eiffel Tower fully completed?" (Specific, doesn't hint at the answer, and uniquely elicits the claim)
-    
+
 #     For the following atomic claim, generate a question, and return only that question, that uniquely elicits this claim as its answer:
 
 #     {factoid_i}
 #     """
 #     return question_template
 
-    
+
 # def get_question_template(
-#     # response: str, 
-#     factoid_i: str, 
+#     # response: str,
+#     factoid_i: str,
 #     # num_questions: int = 3
 # ) -> str:
 #     """
@@ -280,9 +280,8 @@ def get_factoid_template(response: str) -> str:
 #     """
 #     return question_template
 
-def get_question_template(
-    factoid: str
-):
+
+def get_question_template(factoid: str):
     question_template = f"""
     Create a specific question that has this exact claim as its only correct answer. Return just the question with no extra text.
 
@@ -290,11 +289,8 @@ def get_question_template(
     """
     return question_template
 
-def get_multiple_question_template(
-    factoid: str,
-    num_questions: int = 2,
-    response: str = None,
-):
+
+def get_multiple_question_template(factoid: str, num_questions: int = 2, response: str = None):
     if response:
         question_template = f"""
         Following this text: {response}
@@ -319,9 +315,10 @@ def get_multiple_question_template(
     """
     return question_template
 
+
 def get_answer_template(
-    # original_question: str, 
-    # original_response: str, 
+    # original_question: str,
+    # original_response: str,
     claim_question: str,
     entity: str = None,
     response: str = None,
