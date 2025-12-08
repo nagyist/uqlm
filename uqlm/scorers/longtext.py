@@ -46,14 +46,18 @@ class LongTextUQ(UncertaintyQuantifier):
             A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
             relevant parameters to the constructor of their `llm` object.
 
-        scorers : subset of {"luq", "luq_atomic"}, default=None
-            Specifies which black box (consistency) scorers to include. If None, defaults to
-            ["semantic_negentropy", "noncontradiction", "exact_match", "cosine_sim"].
+        scorers : subset of {"entailment", "noncontradiction", "contrasted_entailment", "bert_score", "cosine_sim"}, default=None
+            Specifies which black box (consistency) scorers to include. If None, defaults to ["entailment"].
+            
+        granularity : str, default="claim"
+            Specifies whether to decompose and score at claim or sentence level granularity. Must be either "claim" or "sentence"
+            
+        mode : str, default="unit_response"
+            Specifies whether to implement unit-response (LUQ-style) scoring or matched-unit (LUQ-pair-style) scoring 
 
         claim_decomposition_llm : langchain `BaseChatModel`, default=None
-            A langchain llm `BaseChatModel` to be used for decomposing responses into individual claims
-            or 'factoids'. If a scorer that requires claim decomposition (e.g., "luq_atomic") is specified
-            and claim_decomposition_llm is None, the provided `llm` will be used for claim decomposition.
+            A langchain llm `BaseChatModel` to be used for decomposing responses into individual claims.
+            If granularity="claim" and claim_decomposition_llm is None, the provided `llm` will be used for claim decomposition.
 
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Applies to 'luq', 'luq_atomic'
@@ -81,6 +85,9 @@ class LongTextUQ(UncertaintyQuantifier):
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
         """
+        # TODO: enable scorer specification
+        # TODO: return claim scores and response scores?
+        # TODO: enable UAD filtering and reconstruction
 
         super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
         self.mode = mode
