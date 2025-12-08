@@ -19,7 +19,7 @@ DATACLASS_NAMES = ["claim_entail_scores", "claim_noncontradict_scores", "claim_c
 DATACLASS_TO_SCORER_MAP = {scorer: dataclass_name for scorer, dataclass_name in zip(UNIT_RESPONSE_SCORERS + MATCHED_UNIT_SCORERS, DATACLASS_NAMES * 4)}
 
 
-class LongFormUQ(UncertaintyQuantifier):
+class LongTextUQ(UncertaintyQuantifier):
     def __init__(
         self,
         llm: Optional[BaseChatModel] = None,
