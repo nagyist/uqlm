@@ -20,7 +20,7 @@ from rich.progress import Progress
 from uqlm.black_box.cosine import CosineScorer
 from uqlm.black_box.bert import BertScorer
 from uqlm.longform.black_box.baseclass.claims_scorer import ClaimScorer, ClaimScores
-from uqlm.utils.nli import NLI
+from uqlm.nli.nli import NLI
 
 
 ALL_AGREEMENT_SCORER_NAMES = ["nli", "bert_score", "cosine_sim"]
