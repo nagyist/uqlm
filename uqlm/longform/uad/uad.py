@@ -14,7 +14,7 @@
 
 import asyncio
 import time
-from typing import List, Optional, Callable
+from typing import List, Optional
 import numpy as np
 from uqlm.utils.prompts import get_response_reconstruction_prompt
 from rich.progress import Progress
@@ -32,7 +32,7 @@ class UncertaintyAwareDecoder:
         reconstructor_llm : langchain `BaseChatModel`, default=None
             A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
             relevant parameters to the constructor of their `llm` object.
-            
+
         threshold : float, default=1/3
             Threshold used for uncertainty-aware filtering
         """
@@ -67,7 +67,7 @@ class UncertaintyAwareDecoder:
             filtered_claim_scores.append(filtered_claim_scores_i)
             filtered_claim_sets.append(filtered_claim_set_i)
             retain_indicators.append(retain_indicators_i)
-            
+
         if progress_bar:
             self.progress_task = progress_bar.add_task(" - Reconstructing responses with high-confidence claims...", total=len(claim_sets))
         tasks = [self._reconstruct_single_response(claim_set=filtered_claim_sets[i], progress_bar=progress_bar) for i in range(len(claim_sets))]
@@ -81,10 +81,10 @@ class UncertaintyAwareDecoder:
         if progress_bar:
             progress_bar.update(self.progress_task, advance=1)
         return reconstructed_response.content
-    
+
     def _aggregate_scores(self, claim_scores: List[List[float]]) -> List[float]:
         """Aggregate filtered claim scores to response level scores"""
         if self.aggregation == "mean":
-            return [np.mean(cs) for cs in claim_scores]        
+            return [np.mean(cs) for cs in claim_scores]
         elif self.aggregation == "min":
             return [np.min(cs) for cs in claim_scores]

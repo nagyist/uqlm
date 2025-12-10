@@ -14,14 +14,15 @@
 
 from typing import List
 
+
 # @misc{jiang2024graphbaseduncertaintymetricslongform,
-#       title={Graph-based Uncertainty Metrics for Long-form Language Model Outputs}, 
+#       title={Graph-based Uncertainty Metrics for Long-form Language Model Outputs},
 #       author={Mingjian Jiang and Yangjun Ruan and Prasanna Sattigeri and Salim Roukos and Tatsunori Hashimoto},
 #       year={2024},
 #       eprint={2410.20783},
 #       archivePrefix={arXiv},
 #       primaryClass={cs.CL},
-#       url={https://arxiv.org/abs/2410.20783}, 
+#       url={https://arxiv.org/abs/2410.20783},
 # }
 def get_response_reconstruction_prompt(claim_set: List[str]) -> str:
     """

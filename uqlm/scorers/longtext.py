@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional
 import numpy as np
 from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -20,6 +20,7 @@ from uqlm.longform.uad import UncertaintyAwareDecoder
 # DATACLASS_TO_SCORER_MAP = {scorer: dataclass_name for scorer, dataclass_name in zip(UNIT_RESPONSE_SCORERS + MATCHED_UNIT_SCORERS, DATACLASS_NAMES * 4)}
 UNIT_RESPONSE_SCORERS = ["entailment", "noncontradiction", "contrasted_entailment"]
 MATCHED_UNIT_SCORERS = UNIT_RESPONSE_SCORERS + ["bert_score", "cosine_sim"]
+
 
 class LongTextUQ(UncertaintyQuantifier):
     def __init__(
@@ -52,12 +53,12 @@ class LongTextUQ(UncertaintyQuantifier):
 
         scorers : subset of {"entailment", "noncontradiction", "contrasted_entailment", "bert_score", "cosine_sim"}, default=None
             Specifies which black box (consistency) scorers to include. If None, defaults to ["entailment"].
-            
+
         granularity : str, default="claim"
             Specifies whether to decompose and score at claim or sentence level granularity. Must be either "claim" or "sentence"
-            
+
         mode : str, default="unit_response"
-            Specifies whether to implement unit-response (LUQ-style) scoring or matched-unit (LUQ-pair-style) scoring 
+            Specifies whether to implement unit-response (LUQ-style) scoring or matched-unit (LUQ-pair-style) scoring
 
         aggregation : str, default="mean"
             Specifies how to aggregate claim/sentence-level scores to response-level scores. Must be one of 'min' or 'mean'.
@@ -181,16 +182,16 @@ class LongTextUQ(UncertaintyQuantifier):
         self._display_scoring_header(show_progress_bars)
 
         self.scores_dict = self._score_from_decomposed(claim_sets=self.claim_sets, sentence_sets=self.sentence_sets, sampled_responses=self.sampled_responses, sampled_claim_sets=self.sampled_claim_sets, progress_bar=self.progress_bar)
-        
+
         if self.uad_filtering:
             claim_scores_for_uad = self.scores_dict["claim_" + self.scorers[0]]
             self.uad_result = await self.uncertainty_aware_decode(claim_sets=self.claim_sets, claim_scores=claim_scores_for_uad, show_progress_bars=show_progress_bars)
 
         self._stop_progress_bar()
         self.progress_bar = None
-            
+
         return self._construct_result()
-    
+
     async def uncertainty_aware_decode(self, claim_sets: List[List[str]], claim_scores: List[List[float]], uad_threshold: float = 1 / 3, show_progress_bars: Optional[bool] = True) -> List[str]:
         """
         Parameters
@@ -245,7 +246,7 @@ class LongTextUQ(UncertaintyQuantifier):
                 scores_dict[self.granularity + "_" + scorer] = [list(claim_scores) for claim_scores in scores]
                 scores_dict["aggregated" + "_" + scorer] = self._aggregate_scores(scores)
         return scores_dict
-                
+
     async def _decompose_responses(self, show_progress_bars) -> None:
         """Display header and decompose responses"""
         self._display_decomposition_header(show_progress_bars)
@@ -261,7 +262,7 @@ class LongTextUQ(UncertaintyQuantifier):
     def _aggregate_scores(self, claim_scores: List[List[float]]) -> List[float]:
         """Aggregate claim scores to response level scores"""
         if self.aggregation == "mean":
-            return [np.mean(cs) for cs in claim_scores]        
+            return [np.mean(cs) for cs in claim_scores]
         elif self.aggregation == "min":
             return [np.min(cs) for cs in claim_scores]
 
@@ -285,7 +286,7 @@ class LongTextUQ(UncertaintyQuantifier):
             self.progress_bar.start()
             self.progress_bar.add_task("")
             self.progress_bar.add_task("✂️ Decomposition")
-            
+
     def _display_reconstruction_header(self, show_progress_bars: bool) -> None:
         """Displays decomposition header"""
         if show_progress_bars:
@@ -297,7 +298,7 @@ class LongTextUQ(UncertaintyQuantifier):
         """Validate scorers"""
         if not self.scorers:
             self.scorers = ["entailment"]
-        
+
         self.matched_unit_scorer = None
         self.unit_response_scorer = None
         if self.granularity not in ["sentence", "claim"]:
@@ -309,27 +310,23 @@ class LongTextUQ(UncertaintyQuantifier):
         if self.uad_filtering:
             if self.granularity != "claim":
                 raise ValueError("Uncertainty aware decoding is only possible with claim-level scoring. Please set uad_filtering=False or granularity='claim'")
-            self.reconstructor = UncertaintyAwareDecoder(
-                reconstructor_llm=self.decomposer.claim_decomposition_llm, 
-                threshold=self.uad_threshold,
-                aggregation=self.aggregation,
-            )
+            self.reconstructor = UncertaintyAwareDecoder(reconstructor_llm=self.decomposer.claim_decomposition_llm, threshold=self.uad_threshold, aggregation=self.aggregation)
         if self.mode == "unit_response":
             if set(self.scorers) - set(UNIT_RESPONSE_SCORERS):
                 raise ValueError(
-                f"""
+                    f"""
                 Invalid scorers: {set(self.scorers) - set(UNIT_RESPONSE_SCORERS)}. Must be subset of {UNIT_RESPONSE_SCORERS} when mode="unit_response"
                 """
-            )
+                )
             self.unit_response_scorer = UnitResponseScorer(nli_model_name=self.nli_model_name, device=self.device, max_length=self.max_length)
         elif self.mode == "matched_unit":
             self.matched_unit_scorer = MatchedUnitScorer(nli_model_name=self.nli_model_name, device=self.device, max_length=self.max_length)
             if set(self.scorers) - set(MATCHED_UNIT_SCORERS):
                 raise ValueError(
-                f"""
+                    f"""
                 Invalid scorers: {set(self.scorers) - set(MATCHED_UNIT_SCORERS)}. Must be subset of {MATCHED_UNIT_SCORERS} when mode="matched_unit"
                 """
-            )
+                )
         else:
             raise ValueError(
                 f"""
