@@ -17,7 +17,7 @@ from typing import Any, List, Optional, Union, Dict
 import warnings
 from langchain_core.messages import BaseMessage
 
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.short_form.baseclass.uncertainty import UncertaintyQuantifier
 from uqlm.utils.results import UQResult
 import time
 from uqlm.nli.cluster import SemanticClusterer

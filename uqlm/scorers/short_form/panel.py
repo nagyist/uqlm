@@ -18,7 +18,7 @@ from typing import List, Optional, Union
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from uqlm.judges.judge import LLMJudge
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.short_form.baseclass.uncertainty import UncertaintyQuantifier
 from uqlm.utils.results import UQResult
 
 

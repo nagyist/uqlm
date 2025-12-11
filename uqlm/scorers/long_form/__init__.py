@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.long_form.longtext import LongTextUQ
 
-__all__ = ["UncertaintyQuantifier"]
+__all__ = ["LongTextUQ"]
