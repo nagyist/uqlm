@@ -8,7 +8,7 @@ For detailed API documentation and usage examples, see the :doc:`API Reference <
 
 .. toctree::
    :maxdepth: 2
-   :caption: Scorer Categories
+   :caption: Available Scorers
 
    black_box/index
    white_box/index
