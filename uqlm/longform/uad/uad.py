@@ -15,14 +15,13 @@
 import asyncio
 import time
 from typing import List, Optional
-import numpy as np
 from uqlm.utils.prompts import get_response_reconstruction_prompt
 from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
 
 
 class UncertaintyAwareDecoder:
-    def __init__(self, reconstructor_llm: Optional[BaseChatModel] = None, threshold: float = 1 / 3, aggregation: str = "mean") -> None:
+    def __init__(self, reconstructor_llm: BaseChatModel, threshold: float = 1 / 3, aggregation: str = "mean") -> None:
         """
         Class for decomposing responses into individual claims or sentences. This class is used as an intermediate
         step for longform UQ methods.
@@ -41,7 +40,7 @@ class UncertaintyAwareDecoder:
         self.aggregation = aggregation
         self.reconstruction_template = get_response_reconstruction_prompt
 
-    async def reconstruct_responses(self, claim_sets: List[List[str]], claim_scores: List[List[float]], progress_bar: Optional[Progress] = None) -> List[str]:
+    async def reconstruct_responses(self, claim_sets: List[List[str]], claim_scores: List[List[float]], responses: Optional[List[str]] = None, progress_bar: Optional[Progress] = None) -> List[str]:
         """
         Parameters
         ----------
@@ -54,37 +53,37 @@ class UncertaintyAwareDecoder:
         progress_bar : rich.progress.Progress, default=None
             If provided, displays a progress bar while scoring responses
         """
-        filtered_claim_scores, filtered_claim_sets, retain_indicators = [], [], []
+        if not responses:
+            responses = [None] * len(claim_sets)
+
+        filtered_claim_scores, filtered_claim_sets, remove_indicators = [], [], []
         for i in range(len(claim_sets)):
-            filtered_claim_scores_i, filtered_claim_set_i, retain_indicators_i = [], [], []
+            filtered_claim_scores_i, filtered_claim_set_i, remove_indicators_i = [], [], []
             for j in range(len(claim_scores[i])):
                 if claim_scores[i][j] > self.threshold:
                     filtered_claim_scores_i.append(claim_scores[i][j])
                     filtered_claim_set_i.append(claim_sets[i][j])
-                    retain_indicators_i.append(True)
+                    remove_indicators_i.append(False)
                 else:
-                    retain_indicators_i.append(False)
+                    remove_indicators_i.append(True)
             filtered_claim_scores.append(filtered_claim_scores_i)
             filtered_claim_sets.append(filtered_claim_set_i)
-            retain_indicators.append(retain_indicators_i)
+            remove_indicators.append(remove_indicators_i)
 
         if progress_bar:
             self.progress_task = progress_bar.add_task(" - Reconstructing responses with high-confidence claims...", total=len(claim_sets))
-        tasks = [self._reconstruct_single_response(claim_set=filtered_claim_sets[i], progress_bar=progress_bar) for i in range(len(claim_sets))]
+        tasks = [self._reconstruct_single_response(claim_set=filtered_claim_sets[i], response=responses[i], progress_bar=progress_bar) for i in range(len(claim_sets))]
         reconstructed_responses = await asyncio.gather(*tasks)
         time.sleep(0.1)
-        return {"uad_responses": reconstructed_responses, "claim_retained": retain_indicators, "uad_response_scores": self._aggregate_scores(filtered_claim_scores)}
+        return {"refined_responses": reconstructed_responses, "removed": remove_indicators}
 
-    async def _reconstruct_single_response(self, claim_set: List[str], progress_bar: Optional[Progress] = None) -> str:
+    async def _reconstruct_single_response(self, claim_set: List[str], response: Optional[str] = None, progress_bar: Optional[Progress] = None) -> str:
         """Decompose single response into claims using LLM and extract claims from the result"""
-        reconstructed_response = await self.reconstructor_llm.ainvoke(self.reconstruction_template(claim_set))
+        if claim_set:
+            generation = await self.reconstructor_llm.ainvoke(self.reconstruction_template(claim_set))
+            reconstructed_response = generation.content
+        else:
+            reconstructed_response = response
         if progress_bar:
             progress_bar.update(self.progress_task, advance=1)
-        return reconstructed_response.content
-
-    def _aggregate_scores(self, claim_scores: List[List[float]]) -> List[float]:
-        """Aggregate filtered claim scores to response level scores"""
-        if self.aggregation == "mean":
-            return [np.mean(cs) for cs in claim_scores]
-        elif self.aggregation == "min":
-            return [np.min(cs) for cs in claim_scores]
+        return reconstructed_response

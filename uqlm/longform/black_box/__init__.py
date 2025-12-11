@@ -14,6 +14,5 @@
 
 from uqlm.longform.black_box.matched_unit import MatchedUnitScorer
 from uqlm.longform.black_box.unit_response import UnitResponseScorer
-from uqlm.longform.black_box.claimqa import ClaimQAScorer
 
-__all__ = ["MatchedUnitScorer", "UnitResponseScorer", "ClaimQAScorer"]
+__all__ = ["MatchedUnitScorer", "UnitResponseScorer"]

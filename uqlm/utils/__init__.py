@@ -15,7 +15,7 @@
 
 from uqlm.utils.plots import plot_model_accuracies, plot_filtered_accuracy, plot_ranked_auc
 from uqlm.utils.dataloader import load_dataset, load_example_dataset
-from uqlm.utils.postprocessors import math_postprocessor
+from uqlm.utils.postprocessors import math_postprocessor, claims_dicts_to_lists
 from uqlm.utils.response_generator import ResponseGenerator
 from uqlm.utils.results import UQResult
 from uqlm.utils.tuner import Tuner
@@ -55,4 +55,5 @@ __all__ = [
     "create_instruction",
     "get_claim_breakdown_prompt",
     "get_entailment_prompt",
+    "claims_dicts_to_lists",
 ]
