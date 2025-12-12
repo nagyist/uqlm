@@ -13,29 +13,12 @@
 # limitations under the License.
 
 
-# import io
-# import contextlib
-# from typing import Any, List, Optional, Union
-# from langchain_core.messages import BaseMessage
-# from rich.progress import Progress, TextColumn
-# from rich.errors import LiveError
-
-# from uqlm.utils.response_generator import ResponseGenerator
-# from uqlm.nli.nli import NLI
-# from uqlm.judges.judge import LLMJudge
-# from uqlm.utils.display import ConditionalBarColumn, ConditionalTimeElapsedColumn, ConditionalTextColumn, ConditionalSpinnerColumn
-
+from typing import Any, Optional
 from uqlm.scorers.short_form.baseclass.uncertainty import UncertaintyQuantifier
-
-DEFAULT_BLACK_BOX_SCORERS = ["semantic_negentropy", "noncontradiction", "exact_match", "cosine_sim"]
-
-BLACK_BOX_SCORERS = DEFAULT_BLACK_BOX_SCORERS + ["bert_score", "entailment", "semantic_sets_confidence"]
-
-DEFAULT_WHITE_BOX_SCORERS = ["normalized_probability", "min_probability"]
 
 
 class LongFormUncertaintyQuantifier(UncertaintyQuantifier):
-    def __init__(self, llm: Any = None, device: Any = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False, postprocessor: Optional[Any] = None) -> None:
+    def __init__(self, llm: Any = None, device: Any = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False) -> None:
         """
         Parent class for uncertainty quantification of LLM responses
 
@@ -60,9 +43,5 @@ class LongFormUncertaintyQuantifier(UncertaintyQuantifier):
         use_n_param : bool, default=False
             Specifies whether to use `n` parameter for `BaseChatModel`. Not compatible with all
             `BaseChatModel` classes. If used, it speeds up the generation process substantially when num_responses > 1.
-
-        postprocessor : callable, default=None
-            A user-defined function that takes a string input and returns a string. Used for postprocessing
-            outputs.
         """
-        super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor)
+        super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)

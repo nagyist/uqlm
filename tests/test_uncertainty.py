@@ -14,9 +14,9 @@
 
 import pytest
 import json
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.short_form.baseclass.uncertainty import UncertaintyQuantifier
 from uqlm.utils.results import UQResult
-from uqlm.judges.judge import LLMJudge
+from uqlm.judges import LLMJudge
 from langchain_openai import AzureChatOpenAI
 
 datafile_path = "tests/data/scorers/bsdetector_results_file.json"
