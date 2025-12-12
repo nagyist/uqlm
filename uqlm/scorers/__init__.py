@@ -14,12 +14,13 @@
 
 from pathlib import Path
 
-from uqlm.scorers.short_form.baseclass import UncertaintyQuantifier
+from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.short_form.baseclass import ShortFormUncertaintyQuantifier
 from uqlm.scorers.short_form import UQEnsemble, SemanticDensity, SemanticEntropy, LLMPanel, WhiteBoxUQ, BlackBoxUQ
 from uqlm.scorers.long_form import LongTextUQ
 from uqlm.scorers.long_form.baseclass import LongFormUncertaintyQuantifier
 
-__all__ = ["UQEnsemble", "SemanticDensity", "SemanticEntropy", "LLMPanel", "WhiteBoxUQ", "BlackBoxUQ", "LongTextUQ", "UncertaintyQuantifier", "LongFormUncertaintyQuantifier"]
+__all__ = ["UQEnsemble", "SemanticDensity", "SemanticEntropy", "LLMPanel", "WhiteBoxUQ", "BlackBoxUQ", "LongTextUQ", "ShortFormUncertaintyQuantifier", "LongFormUncertaintyQuantifier", "UncertaintyQuantifier"]
 
 # Allow submodule imports like `uqlm.scorers.entropy` and `uqlm.scorers.baseclass`
 _base_dir = Path(__file__).resolve().parent

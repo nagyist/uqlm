@@ -18,11 +18,11 @@ from typing import List, Optional, Union
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from uqlm.judges.judge import LLMJudge
-from uqlm.scorers.short_form.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.short_form.baseclass.uncertainty import ShortFormUncertaintyQuantifier
 from uqlm.utils.results import UQResult
 
 
-class LLMPanel(UncertaintyQuantifier):
+class LLMPanel(ShortFormUncertaintyQuantifier):
     def __init__(self, judges: List[Union[LLMJudge, BaseChatModel]], llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scoring_templates: Optional[List[str]] = None, explanations: bool = False, additional_context: Optional[str] = None) -> None:
         """
         Class for aggregating multiple instances of LLMJudge using min, max, or majority voting

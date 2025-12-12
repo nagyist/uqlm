@@ -14,7 +14,7 @@
 
 
 from typing import Any, Optional
-from uqlm.scorers.short_form.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
 
 
 class LongFormUncertaintyQuantifier(UncertaintyQuantifier):

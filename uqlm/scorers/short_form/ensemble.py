@@ -24,7 +24,7 @@ import rich
 from rich import print as rprint
 
 from uqlm.judges.judge import LLMJudge
-from uqlm.scorers.short_form.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.short_form.baseclass.uncertainty import ShortFormUncertaintyQuantifier
 from uqlm.utils.results import UQResult
 from uqlm.scorers.short_form.panel import LLMPanel
 from uqlm.scorers.short_form.black_box import BlackBoxUQ
@@ -34,7 +34,7 @@ from uqlm.utils.tuner import Tuner
 from uqlm.utils.llm_config import save_llm_config, load_llm_config
 
 
-class UQEnsemble(UncertaintyQuantifier):
+class UQEnsemble(ShortFormUncertaintyQuantifier):
     def __init__(
         self,
         llm: Optional[BaseChatModel] = None,
