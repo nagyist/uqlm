@@ -17,7 +17,6 @@ from uqlm.scorers.short_form.entropy import SemanticEntropy
 from uqlm.scorers.short_form.panel import LLMPanel
 from uqlm.scorers.short_form.white_box import WhiteBoxUQ
 from uqlm.scorers.short_form.black_box import BlackBoxUQ
-from uqlm.scorers.long_form.longtext import LongTextUQ
-from uqlm.scorers.claimqa import ClaimQA
+from uqlm.scorers.short_form.density import SemanticDensity
 
-__all__ = ["UQEnsemble", "SemanticEntropy", "LLMPanel", "WhiteBoxUQ", "BlackBoxUQ", "LongTextUQ", "ClaimQA"]
+__all__ = ["UQEnsemble", "SemanticEntropy", "LLMPanel", "WhiteBoxUQ", "BlackBoxUQ", "SemanticDensity"]

@@ -2,7 +2,7 @@ from typing import Any, List, Optional
 import numpy as np
 from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.long_form.baseclass.uncertainty import LongFormUQ
 from uqlm.utils.results import UQResult
 from uqlm.longform.black_box.matched_unit import MatchedUnitScorer
 from uqlm.longform.black_box.unit_response import UnitResponseScorer
@@ -13,7 +13,7 @@ UNIT_RESPONSE_SCORERS = ["entailment", "noncontradiction", "contrasted_entailmen
 MATCHED_UNIT_SCORERS = UNIT_RESPONSE_SCORERS + ["bert_score", "cosine_sim"]
 
 
-class LongTextUQ(UncertaintyQuantifier):
+class LongTextUQ(LongFormUQ):
     def __init__(
         self,
         llm: Optional[BaseChatModel] = None,

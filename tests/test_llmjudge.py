@@ -15,7 +15,7 @@
 import numpy as np
 import pytest
 import json
-from uqlm.judges import LLMJudge
+from uqlm.judges.judge import LLMJudge
 from langchain_openai import AzureChatOpenAI
 import warnings
 from unittest.mock import AsyncMock
