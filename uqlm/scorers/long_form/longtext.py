@@ -1,5 +1,4 @@
 from typing import Any, List, Optional
-import numpy as np
 from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
 from uqlm.scorers.long_form.baseclass.uncertainty import LongFormUQ
@@ -174,6 +173,8 @@ class LongTextUQ(LongFormUQ):
         self._construct_progress_bar(show_progress_bars)
 
         await self._decompose_responses(show_progress_bars)
+        if self.mode == "matched_unit":
+            await self._decompose_candidate_responses(show_progress_bars)
         self._display_scoring_header(show_progress_bars)
 
         self.scores_dict = self._score_from_decomposed(claim_sets=self.claim_sets, sampled_responses=self.sampled_responses, sampled_claim_sets=self.sampled_claim_sets, progress_bar=self.progress_bar)
@@ -198,38 +199,6 @@ class LongTextUQ(LongFormUQ):
             del self.uad_result["removed"]
 
         return self._construct_result()
-
-    async def uncertainty_aware_decode(self, claim_sets: List[List[str]], claim_scores: List[List[float]], claim_refinement_threshold: float = 1 / 3, show_progress_bars: Optional[bool] = True) -> List[str]:
-        """
-        Parameters
-        ----------
-        claim_sets : List[List[str]]
-            List of original responses decomposed into lists of claims
-
-        claim_scores : List[List[float]]
-            List of lists of claim-level confidence scores to be used for uncertainty-aware filtering
-
-        progress_bar : rich.progress.Progress, default=None
-            If provided, displays a progress bar while scoring responses
-        """
-        self._construct_progress_bar(show_progress_bars)
-        self._display_reconstruction_header(show_progress_bars)
-        uad_result = await self.reconstructor.reconstruct_responses(claim_sets=claim_sets, claim_scores=claim_scores, responses=self.responses, progress_bar=self.progress_bar)
-        self._stop_progress_bar()
-        self.progress_bar = None
-
-        for scorer in self.scorers:
-            filtered_claim_scores = []
-            for i in range(len(self.claim_sets)):
-                filtered_claim_scores_i = []
-                for j in range(len(self.claim_sets[i])):
-                    if not uad_result["removed"][i][j]:
-                        filtered_claim_scores_i.append(self.claim_scores[scorer][i][j])
-                filtered_claim_scores.append(filtered_claim_scores_i)
-
-            uad_result["refined_" + scorer] = self._aggregate_scores(filtered_claim_scores)
-
-        return uad_result
 
     def _score_from_decomposed(self, claim_sets: List[List[str]], sampled_responses: Optional[List[List[str]]] = None, sampled_claim_sets: Optional[List[List[List[str]]]] = None, progress_bar: Optional[Progress] = None) -> UQResult:
         """
@@ -263,18 +232,6 @@ class LongTextUQ(LongFormUQ):
 
         return scores_dict
 
-    async def _decompose_responses(self, show_progress_bars) -> None:
-        """Display header and decompose responses"""
-        self._display_decomposition_header(show_progress_bars)
-        if self.granularity == "sentence":
-            self.claim_sets = self.decomposer.decompose_sentences(responses=self.responses, progress_bar=self.progress_bar)
-            if self.mode == "matched_unit":
-                self.sampled_claim_sets = self.decomposer.decompose_candidate_sentences(sampled_responses=self.sampled_responses, progress_bar=self.progress_bar)
-        elif self.granularity == "claim":
-            self.claim_sets = await self.decomposer.decompose_claims(responses=self.responses, progress_bar=self.progress_bar)
-            if self.mode == "matched_unit":
-                self.sampled_claim_sets = await self.decomposer.decompose_candidate_claims(sampled_responses=self.sampled_responses, progress_bar=self.progress_bar)
-
     def _construct_result(self) -> Any:
         """Constructs UQResult object"""
         data = {"responses": self.responses, "sampled_responses": self.sampled_responses}
@@ -286,27 +243,6 @@ class LongTextUQ(LongFormUQ):
         data.update(self.uad_result)
         result = {"data": data, "metadata": {"mode": self.mode, "granularity": self.granularity, "aggregation": self.aggregation, "temperature": None if not self.llm else self.llm.temperature, "sampling_temperature": None if not self.sampling_temperature else self.sampling_temperature, "num_responses": self.num_responses, "claim_refinement_threshold": self.claim_refinement_threshold}}
         return UQResult(result)
-
-    def _aggregate_scores(self, claim_scores: List[List[float]]) -> List[float]:
-        """Aggregate claim scores to response level scores"""
-        if self.aggregation == "mean":
-            return [np.mean(cs) for cs in claim_scores]
-        elif self.aggregation == "min":
-            return [np.min(cs) for cs in claim_scores]
-
-    def _display_decomposition_header(self, show_progress_bars: bool) -> None:
-        """Displays decomposition header"""
-        if show_progress_bars:
-            self.progress_bar.start()
-            self.progress_bar.add_task("")
-            self.progress_bar.add_task("✂️ Decomposition")
-
-    def _display_reconstruction_header(self, show_progress_bars: bool) -> None:
-        """Displays decomposition header"""
-        if show_progress_bars:
-            self.progress_bar.start()
-            self.progress_bar.add_task("")
-            self.progress_bar.add_task("✅️ Refinement")
 
     def _validate_scorers(self) -> None:
         """Validate scorers"""

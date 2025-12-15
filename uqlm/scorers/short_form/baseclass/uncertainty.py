@@ -57,7 +57,7 @@ class ShortFormUQ(UncertaintyQuantifier):
         self.black_box_names = BLACK_BOX_SCORERS
         self.white_box_names = DEFAULT_WHITE_BOX_SCORERS
         self.default_black_box_names = DEFAULT_BLACK_BOX_SCORERS
-        
+
     def _construct_judge(self, llm: Any = None) -> LLMJudge:
         """
         Constructs LLMJudge object

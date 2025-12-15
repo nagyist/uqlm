@@ -36,7 +36,7 @@ def get_multiple_question_template(claim: str, num_questions: int = 2, response:
         Example:
         ### Here is the first question? ### Here is the second question?
 
-        You should only return the final response. Now your response is:
+        Now your response is:
         """
     else:
         question_template = f"""
@@ -47,7 +47,7 @@ def get_multiple_question_template(claim: str, num_questions: int = 2, response:
     Example:
     ### Here is the first question? ### Here is the second question?
 
-    You should only return the final response. Now your response is:
+    Now your response is:
     """
     return question_template
 
