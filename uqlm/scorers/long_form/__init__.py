@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from uqlm.scorers.long_form.longtext import LongTextUQ
+from uqlm.scorers.long_form.claimqa import ClaimQA
 
-__all__ = ["LongTextUQ"]
+__all__ = ["LongTextUQ", "ClaimQA"]
