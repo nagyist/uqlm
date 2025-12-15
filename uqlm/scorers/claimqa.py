@@ -37,26 +37,68 @@ class ClaimQA(UncertaintyQuantifier):
 
         Parameters
         ----------
-        llm : BaseChatModel
-            The original LLM to use for generating responses.
-        llm_decomposer : BaseChatModel
-            The LLM to use for decomposing the claims.
-        question_generator_llm : BaseChatModel
-            The LLM to use for generating questions.
-        response_template : str, default="atomic"
-            The template to use for generating responses. Choose from "atomic" or "factoid".
-        system_prompt : str
-            The system prompt to use for generating responses. Default is "You are a helpful assistant."
-        sampling_temperature : float, default=1.0
-            The temperature to use for sampling the responses.
-        max_calls_per_min : int
-            The maximum number of calls per minute to the LLM.
-        use_n_param : bool
-            Whether to use the n parameter for the LLM.
+        llm : langchain `BaseChatModel`, default=None
+            A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
+            relevant parameters to the constructor of their `llm` object.
+
+        scorers : subset of {"entailment", "noncontradiction", "contrasted_entailment", "bert_score", "cosine_sim"}, default=None
+            Specifies which black box (consistency) scorers to include. If None, defaults to ["entailment"].
+
+        granularity : str, default="claim"
+            Specifies whether to decompose and score at claim or sentence level granularity. Must be either "claim" or "sentence"
+
+        aggregation : str, default="mean"
+            Specifies how to aggregate claim/sentence-level scores to response-level scores. Must be one of 'min' or 'mean'.
+
         num_questions : int, default=1
-            The number of questions to generate for each factoid.
-        num_claim_qa_responses : int, default=2
+            The number of questions to generate for each claim/sentence.
+
+        num_claim_qa_responses : int, default=5
             The number of responses to generate for each claim-inverted question.
+
+        claim_refinement : bool, default=False
+            Specifies whether to refine responses with uncertainty-aware decoding. This approach removes claims with confidence
+            scores below the claim_refinement_threshold and uses the claim_decomposition_llm to reconstruct the response from
+            the retained claims. Only available for claim-level granularity. For more details, refer to
+            Jiang et al., 2024: https://arxiv.org/abs/2410.20783
+
+        claim_refinement_threshold : float, default=1/3
+            Threshold for uncertainty-aware filtering. Claims with confidence scores below this threshold are dropped from the
+            refined response. Only used if claim_refinement is True.
+
+        claim_decomposition_llm : langchain `BaseChatModel`, default=None
+            A langchain llm `BaseChatModel` to be used for decomposing responses into individual claims. Also used for claim refinement.
+            If granularity="claim" and claim_decomposition_llm is None, the provided `llm` will be used for claim decomposition.
+
+        question_generator_llm : langchain `BaseChatModel`, default=None
+            A langchain llm `BaseChatModel` to be used for decomposing responses into individual claims. Used for generating questions
+            from claims or sentences in claim-QA approach. If None, defaults to claim_decomposition_llm.
+
+        device: str or torch.device input or torch.device object, default="cpu"
+            Specifies the device that NLI model use for prediction. Applies to 'luq', 'luq_atomic'
+            scorers. Pass a torch.device to leverage GPU.
+
+        nli_model_name : str, default="microsoft/deberta-large-mnli"
+            Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
+            AutoModelForSequenceClassification.from_pretrained()
+
+        system_prompt : str or None, default="You are a helpful assistant."
+            Optional argument for user to provide custom system prompt
+
+        max_calls_per_min : int, default=None
+            Specifies how many api calls to make per minute to avoid a rate limit error. By default, no
+            limit is specified.
+
+        sampling_temperature : float, default=1.0
+            The 'temperature' parameter for llm model to generate sampled LLM responses. Must be greater than 0.
+
+        use_n_param : bool, default=False
+            Specifies whether to use `n` parameter for `BaseChatModel`. Not compatible with all
+            `BaseChatModel` classes. If used, it speeds up the generation process substantially when num_responses > 1.
+
+        max_length : int, default=2000
+            Specifies the maximum allowed string length. Responses longer than this value will be truncated to
+            avoid OutOfMemoryError
         """
         super().__init__(llm=llm, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
         self.num_questions = num_questions
