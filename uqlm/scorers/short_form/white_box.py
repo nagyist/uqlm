@@ -20,7 +20,7 @@ from uqlm.white_box.single_logprobs import SingleLogprobsScorer, SINGLE_LOGPROBS
 from uqlm.white_box.top_logprobs import TopLogprobsScorer, TOP_LOGPROBS_SCORER_NAMES
 from uqlm.white_box.sampled_logprobs import SampledLogprobsScorer, SAMPLED_LOGPROBS_SCORER_NAMES
 from uqlm.white_box.p_true import PTrueScorer
-from uqlm.scorers.short_form.baseclass.uncertainty import ShortFormUncertaintyQuantifier
+from uqlm.scorers.short_form.baseclass.uncertainty import ShortFormUQ
 from uqlm.utils.results import UQResult
 from uqlm.utils.warn import beta_warning, deprecation_warning
 
@@ -29,7 +29,7 @@ ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_
 SCORERS_FOR_SCORING_HEADER = ["consistency_and_confidence", "semantic_negentropy", "semantic_density", "p_true"]
 
 
-class WhiteBoxUQ(ShortFormUncertaintyQuantifier):
+class WhiteBoxUQ(ShortFormUQ):
     def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True, device: Any = None, max_length: int = 2000) -> None:
         """
         Class for computing white-box UQ confidence scores. This class offers two confidence scores, normalized

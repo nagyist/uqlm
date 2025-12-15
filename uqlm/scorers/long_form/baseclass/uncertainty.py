@@ -17,7 +17,7 @@ from typing import Any, Optional
 from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
 
 
-class LongFormUncertaintyQuantifier(UncertaintyQuantifier):
+class LongFormUQ(UncertaintyQuantifier):
     def __init__(self, llm: Any = None, device: Any = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False) -> None:
         """
         Parent class for uncertainty quantification of LLM responses
