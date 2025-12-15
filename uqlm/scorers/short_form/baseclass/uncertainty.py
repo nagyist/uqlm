@@ -22,7 +22,7 @@ BLACK_BOX_SCORERS = DEFAULT_BLACK_BOX_SCORERS + ["bert_score", "entailment", "se
 DEFAULT_WHITE_BOX_SCORERS = ["normalized_probability", "min_probability"]
 
 
-class ShortFormUnQ(UncertaintyQuantifier):
+class ShortFormUQ(UncertaintyQuantifier):
     def __init__(self, llm: Any = None, device: Any = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False, postprocessor: Optional[Any] = None) -> None:
         """
         Parent class for uncertainty quantification of LLM responses
