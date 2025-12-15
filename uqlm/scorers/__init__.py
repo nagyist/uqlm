@@ -19,5 +19,6 @@ from uqlm.scorers.white_box import WhiteBoxUQ
 from uqlm.scorers.black_box import BlackBoxUQ
 from uqlm.scorers.longtext import LongTextUQ
 from uqlm.scorers.density import SemanticDensity
+from uqlm.scorers.claimqa import ClaimQA
 
-__all__ = ["UQEnsemble", "SemanticEntropy", "LLMPanel", "WhiteBoxUQ", "BlackBoxUQ", "SemanticDensity", "LongTextUQ"]
+__all__ = ["UQEnsemble", "SemanticEntropy", "LLMPanel", "WhiteBoxUQ", "BlackBoxUQ", "SemanticDensity", "LongTextUQ", "ClaimQA"]

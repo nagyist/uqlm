@@ -20,7 +20,7 @@ class LongTextUQ(UncertaintyQuantifier):
         granularity: str = "claim",
         mode: str = "unit_response",
         scorers: Optional[List[str]] = None,
-        aggregation: Optional[str] = None,
+        aggregation: str = "mean",
         claim_refinement: bool = False,
         claim_refinement_threshold: float = 1 / 3,
         claim_decomposition_llm: Optional[BaseChatModel] = None,
@@ -58,7 +58,8 @@ class LongTextUQ(UncertaintyQuantifier):
         claim_refinement : bool, default=False
             Specifies whether to refine responses with uncertainty-aware decoding. This approach removes claims with confidence
             scores below the claim_refinement_threshold and uses the claim_decomposition_llm to reconstruct the response from
-            the retained claims. For more details, refer to Jiang et al., 2024: https://arxiv.org/abs/2410.20783
+            the retained claims. Only available for claim-level granularity. For more details, refer to
+            Jiang et al., 2024: https://arxiv.org/abs/2410.20783
 
         claim_refinement_threshold : float, default=1/3
             Threshold for uncertainty-aware filtering. Claims with confidence scores below this threshold are dropped from the
@@ -187,14 +188,15 @@ class LongTextUQ(UncertaintyQuantifier):
         for i in range(len(self.claim_sets)):
             claim_i_data = []
             for j in range(len(self.claim_sets[i])):
-                claims_dict = {"claim": self.claim_sets[i][j], "removed": False if not self.uad_result else self.uad_result["removed"][i][j]}
+                claims_dict = {self.granularity: self.claim_sets[i][j], "removed": False if not self.uad_result else self.uad_result["removed"][i][j]}
                 for scorer in self.scorers:
                     claims_dict[scorer] = self.claim_scores[scorer][i][j]
                 claim_i_data.append(claims_dict)
             claims_data.append(claim_i_data)
 
         self.scores_dict["claims_data"] = claims_data
-        del self.uad_result["removed"]
+        if "removed" in self.uad_result:
+            del self.uad_result["removed"]
 
         return self._construct_result()
 

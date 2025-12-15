@@ -14,7 +14,8 @@
 
 from uqlm.longform.benchmark.factscore_grader import FactScoreGrader
 from uqlm.longform.decomposition.response_decomposer import ResponseDecomposer
+from uqlm.longform.uad.uad import UncertaintyAwareDecoder
 from uqlm.longform.black_box.matched_unit import MatchedUnitScorer
 from uqlm.longform.black_box.unit_response import UnitResponseScorer
 
-__all__ = ["ResponseDecomposer", "MatchedUnitScorer", "UnitResponseScorer", "FactScoreGrader"]
+__all__ = ["ResponseDecomposer", "MatchedUnitScorer", "UnitResponseScorer", "FactScoreGrader", "UncertaintyAwareDecoder"]
