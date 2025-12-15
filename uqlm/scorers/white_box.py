@@ -111,7 +111,7 @@ class WhiteBoxUQ(UncertaintyQuantifier):
         sampled_responses = None
 
         self._construct_progress_bar(show_progress_bars)
-        self._display_generation_header(show_progress_bars, white_box=True)
+        self._display_generation_header(show_progress_bars, generation_type="white_box")
 
         responses = await self.generate_original_responses(prompts, top_k_logprobs=self.top_k_logprobs, progress_bar=self.progress_bar)
         if self.sampled_logprobs_scorer_names:
