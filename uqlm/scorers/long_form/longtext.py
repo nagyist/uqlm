@@ -33,8 +33,7 @@ class LongTextUQ(LongFormUQ):
         max_length: int = 2000,
     ) -> None:
         """
-        Class for longform uncertainty quantification. Implements claimwise analogs of other UQ-based
-        scorers for improved performance with longform tasks.
+        Class for Long-text Uncertainty Quantification (LUQ) scorers.
 
         Parameters
         ----------
