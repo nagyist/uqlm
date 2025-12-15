@@ -113,6 +113,7 @@ class BlackBoxUQ(ShortFormUQ):
         self.sentence_transformer = sentence_transformer
         self.return_responses = return_responses
         self.scorer_names = scorers
+        self.generation_type = "default"
         self._validate_scorers(scorers)
 
     async def generate_and_score(self, prompts: List[Union[str, List[BaseMessage]]], num_responses: int = 5, show_progress_bars: Optional[bool] = True) -> UQResult:
@@ -140,7 +141,7 @@ class BlackBoxUQ(ShortFormUQ):
         self.num_responses = num_responses
 
         self._construct_progress_bar(show_progress_bars)
-        self._display_generation_header(show_progress_bars)
+        self._display_generation_header(show_progress_bars, generation_type=self.generation_type)
 
         responses = await self.generate_original_responses(prompts=prompts, progress_bar=self.progress_bar)
         sampled_responses = await self.generate_candidate_responses(prompts=prompts, num_responses=self.num_responses, progress_bar=self.progress_bar)

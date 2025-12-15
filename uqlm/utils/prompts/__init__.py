@@ -17,7 +17,7 @@ Prompt templates and utilities for the UQLM library.
 """
 
 from uqlm.utils.prompts.judge_prompts import TEMPLATE_TO_INSTRUCTION, TEMPLATE_TO_INSTRUCTION_WITH_EXPLANATIONS, SCORING_CONFIG, COMMON_INSTRUCTIONS, PROMPT_TEMPLATES, create_instruction
-from uqlm.utils.prompts.decomposition import get_claim_breakdown_prompt
+from uqlm.utils.prompts.decomposition import get_claim_breakdown_prompt, get_factoid_breakdown_template
 from uqlm.utils.prompts.reconstruction import get_response_reconstruction_prompt
 from uqlm.utils.prompts.entailment_prompts import get_entailment_prompt
 from uqlm.utils.prompts.factscore_prompts import FACTSCORE_SYSTEM_PROMPT, SUBJECTIVE_SYSTEM_PROMPT

@@ -169,11 +169,16 @@ class UncertaintyQuantifier:
             self.progress_bar = None
             pass
 
-    def _display_generation_header(self, show_progress_bars: bool, white_box: bool = False) -> None:
+    def _display_generation_header(self, show_progress_bars: bool, generation_type: str = "default") -> None:
         """Displays generation header"""
         if show_progress_bars and self.progress_bar:
             try:
-                display_text = "🤖 Generation" if not white_box else "🤖🧮 Generation with Logprobs"
+                if generation_type == "default":
+                    display_text = "🤖 Generation"
+                elif generation_type == "white_box":
+                    display_text = "🤖🧮 Generation with Logprobs"
+                elif generation_type == "claim_qa":
+                    display_text = "\n🤖 Claim-QA Answer Generation"
                 self.progress_bar.add_task(display_text)
             except (AttributeError, RuntimeError, OSError):
                 # If progress bar fails, just continue without it

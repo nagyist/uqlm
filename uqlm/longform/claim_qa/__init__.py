@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from uqlm.longform.black_box.matched_unit import MatchedUnitScorer
-from uqlm.longform.black_box.unit_response import UnitResponseScorer
+from uqlm.longform.claim_qa.question_generator import QuestionGenerator
 
-__all__ = ["MatchedUnitScorer", "UnitResponseScorer"]
+__all__ = ["QuestionGenerator"]
