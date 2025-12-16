@@ -1,19 +1,16 @@
 from typing import Any, List, Optional
-import numpy as np
 from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.long_form.baseclass.uncertainty import LongFormUQ
 from uqlm.utils.results import UQResult
-from uqlm.longform.black_box.matched_unit import MatchedUnitScorer
-from uqlm.longform.black_box.unit_response import UnitResponseScorer
-from uqlm.longform.decomposition import ResponseDecomposer
-from uqlm.longform.uad import UncertaintyAwareDecoder
+from uqlm.longform.luq.matched_unit import MatchedUnitScorer
+from uqlm.longform.luq.unit_response import UnitResponseScorer
 
 UNIT_RESPONSE_SCORERS = ["entailment", "noncontradiction", "contrasted_entailment"]
 MATCHED_UNIT_SCORERS = UNIT_RESPONSE_SCORERS + ["bert_score", "cosine_sim"]
 
 
-class LongTextUQ(UncertaintyQuantifier):
+class LongTextUQ(LongFormUQ):
     def __init__(
         self,
         llm: Optional[BaseChatModel] = None,
@@ -69,8 +66,8 @@ class LongTextUQ(UncertaintyQuantifier):
             If granularity="claim" and claim_decomposition_llm is None, the provided `llm` will be used for claim decomposition.
 
         device: str or torch.device input or torch.device object, default="cpu"
-            Specifies the device that NLI model use for prediction. Applies to 'luq', 'luq_atomic'
-            scorers. Pass a torch.device to leverage GPU.
+            Specifies the device that NLI model use for prediction. If None, detects and returns the best available PyTorch device.
+            Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
 
         nli_model_name : str, default="microsoft/deberta-large-mnli"
             Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
@@ -94,18 +91,12 @@ class LongTextUQ(UncertaintyQuantifier):
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
         """
-        super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
+        self.scorers = ["entailment"] if not scorers else scorers
+        super().__init__(llm=llm, granularity=granularity, aggregation=aggregation, scorers=self.scorers, claim_refinement=claim_refinement, claim_refinement_threshold=claim_refinement_threshold, claim_decomposition_llm=claim_decomposition_llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
+        self.nli_model_name = nli_model_name
         self.mode = mode
-        self.granularity = granularity
-        self.aggregation = aggregation
         self.max_length = max_length
         self.sampling_temperature = sampling_temperature
-        self.nli_model_name = nli_model_name
-        self.claim_decomposition_llm = claim_decomposition_llm
-        self.decomposer = ResponseDecomposer(claim_decomposition_llm=claim_decomposition_llm if claim_decomposition_llm else llm)
-        self.scorers = scorers
-        self.claim_refinement = claim_refinement
-        self.claim_refinement_threshold = claim_refinement_threshold
         self._validate_scorers()
         self.prompts = None
         self.responses = None
@@ -174,6 +165,8 @@ class LongTextUQ(UncertaintyQuantifier):
         self._construct_progress_bar(show_progress_bars)
 
         await self._decompose_responses(show_progress_bars)
+        if self.mode == "matched_unit":
+            await self._decompose_candidate_responses(show_progress_bars)
         self._display_scoring_header(show_progress_bars)
 
         self.scores_dict = self._score_from_decomposed(claim_sets=self.claim_sets, sampled_responses=self.sampled_responses, sampled_claim_sets=self.sampled_claim_sets, progress_bar=self.progress_bar)
@@ -198,38 +191,6 @@ class LongTextUQ(UncertaintyQuantifier):
             del self.uad_result["removed"]
 
         return self._construct_result()
-
-    async def uncertainty_aware_decode(self, claim_sets: List[List[str]], claim_scores: List[List[float]], claim_refinement_threshold: float = 1 / 3, show_progress_bars: Optional[bool] = True) -> List[str]:
-        """
-        Parameters
-        ----------
-        claim_sets : List[List[str]]
-            List of original responses decomposed into lists of claims
-
-        claim_scores : List[List[float]]
-            List of lists of claim-level confidence scores to be used for uncertainty-aware filtering
-
-        progress_bar : rich.progress.Progress, default=None
-            If provided, displays a progress bar while scoring responses
-        """
-        self._construct_progress_bar(show_progress_bars)
-        self._display_reconstruction_header(show_progress_bars)
-        uad_result = await self.reconstructor.reconstruct_responses(claim_sets=claim_sets, claim_scores=claim_scores, responses=self.responses, progress_bar=self.progress_bar)
-        self._stop_progress_bar()
-        self.progress_bar = None
-
-        for scorer in self.scorers:
-            filtered_claim_scores = []
-            for i in range(len(self.claim_sets)):
-                filtered_claim_scores_i = []
-                for j in range(len(self.claim_sets[i])):
-                    if not uad_result["removed"][i][j]:
-                        filtered_claim_scores_i.append(self.claim_scores[scorer][i][j])
-                filtered_claim_scores.append(filtered_claim_scores_i)
-
-            uad_result["refined_" + scorer] = self._aggregate_scores(filtered_claim_scores)
-
-        return uad_result
 
     def _score_from_decomposed(self, claim_sets: List[List[str]], sampled_responses: Optional[List[List[str]]] = None, sampled_claim_sets: Optional[List[List[List[str]]]] = None, progress_bar: Optional[Progress] = None) -> UQResult:
         """
@@ -263,18 +224,6 @@ class LongTextUQ(UncertaintyQuantifier):
 
         return scores_dict
 
-    async def _decompose_responses(self, show_progress_bars) -> None:
-        """Display header and decompose responses"""
-        self._display_decomposition_header(show_progress_bars)
-        if self.granularity == "sentence":
-            self.claim_sets = self.decomposer.decompose_sentences(responses=self.responses, progress_bar=self.progress_bar)
-            if self.mode == "matched_unit":
-                self.sampled_claim_sets = self.decomposer.decompose_candidate_sentences(sampled_responses=self.sampled_responses, progress_bar=self.progress_bar)
-        elif self.granularity == "claim":
-            self.claim_sets = await self.decomposer.decompose_claims(responses=self.responses, progress_bar=self.progress_bar)
-            if self.mode == "matched_unit":
-                self.sampled_claim_sets = await self.decomposer.decompose_candidate_claims(sampled_responses=self.sampled_responses, progress_bar=self.progress_bar)
-
     def _construct_result(self) -> Any:
         """Constructs UQResult object"""
         data = {"responses": self.responses, "sampled_responses": self.sampled_responses}
@@ -287,40 +236,10 @@ class LongTextUQ(UncertaintyQuantifier):
         result = {"data": data, "metadata": {"mode": self.mode, "granularity": self.granularity, "aggregation": self.aggregation, "temperature": None if not self.llm else self.llm.temperature, "sampling_temperature": None if not self.sampling_temperature else self.sampling_temperature, "num_responses": self.num_responses, "claim_refinement_threshold": self.claim_refinement_threshold}}
         return UQResult(result)
 
-    def _aggregate_scores(self, claim_scores: List[List[float]]) -> List[float]:
-        """Aggregate claim scores to response level scores"""
-        if self.aggregation == "mean":
-            return [np.mean(cs) for cs in claim_scores]
-        elif self.aggregation == "min":
-            return [np.min(cs) for cs in claim_scores]
-
-    def _display_decomposition_header(self, show_progress_bars: bool) -> None:
-        """Displays decomposition header"""
-        if show_progress_bars:
-            self.progress_bar.start()
-            self.progress_bar.add_task("")
-            self.progress_bar.add_task("✂️ Decomposition")
-
-    def _display_reconstruction_header(self, show_progress_bars: bool) -> None:
-        """Displays decomposition header"""
-        if show_progress_bars:
-            self.progress_bar.start()
-            self.progress_bar.add_task("")
-            self.progress_bar.add_task("✅️ Refinement")
-
     def _validate_scorers(self) -> None:
         """Validate scorers"""
-        if not self.scorers:
-            self.scorers = ["entailment"]
-
         self.matched_unit_scorer = None
         self.unit_response_scorer = None
-        if self.granularity not in ["sentence", "claim"]:
-            raise ValueError(
-                f"""
-                Invalid granularity: {self.granularity}. Must be one of "sentence", "claim"
-                """
-            )
         if self.mode == "unit_response":
             if set(self.scorers) - set(UNIT_RESPONSE_SCORERS):
                 raise ValueError(
@@ -343,8 +262,3 @@ class LongTextUQ(UncertaintyQuantifier):
                 Invalid mode: {self.mode}. Must be one of "unit_response", "matched_unit"
                 """
             )
-        if self.claim_refinement:
-            if self.granularity != "claim":
-                raise ValueError("Uncertainty aware decoding is only possible with claim-level scoring. Please set claim_refinement=False or granularity='claim'")
-            self.reconstructor = UncertaintyAwareDecoder(reconstructor_llm=self.decomposer.claim_decomposition_llm, threshold=self.claim_refinement_threshold, aggregation=self.aggregation)
-            self.uad_scorer = self.scorers[0]

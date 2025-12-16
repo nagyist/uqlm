@@ -17,13 +17,13 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 from typing import Any, List, Optional, Union
 
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.short_form.baseclass.uncertainty import ShortFormUQ
 from uqlm.utils.results import UQResult
 from uqlm.black_box import BertScorer, CosineScorer, MatchScorer, ConsistencyScorer
-from uqlm.scorers.entropy import SemanticEntropy
+from uqlm.scorers.short_form.entropy import SemanticEntropy
 
 
-class BlackBoxUQ(UncertaintyQuantifier):
+class BlackBoxUQ(ShortFormUQ):
     def __init__(
         self,
         llm: Optional[BaseChatModel] = None,

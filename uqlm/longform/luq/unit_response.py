@@ -15,7 +15,7 @@
 from typing import List, Any, Optional
 from rich.progress import Progress
 from uqlm.nli.nli import NLI
-from uqlm.longform.black_box.baseclass.claims_scorer import ClaimScorer, ClaimScores
+from uqlm.longform.luq.baseclass.claims_scorer import ClaimScorer, ClaimScores
 
 
 class UnitResponseScorer(ClaimScorer):
