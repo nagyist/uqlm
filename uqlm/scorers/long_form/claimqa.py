@@ -2,32 +2,30 @@ import numpy as np
 from typing import List, Optional, Any
 from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
-from uqlm.longform.decomposition.response_decomposer import ResponseDecomposer
 from uqlm.longform.claim_qa.question_generator import QuestionGenerator
 from uqlm.utils.prompts.claim_qa import get_answer_template
 from uqlm.utils.results import UQResult
 from uqlm.scorers import BlackBoxUQ
 from uqlm.scorers.long_form.baseclass.uncertainty import LongFormUQ
-from uqlm.longform.uad import UncertaintyAwareDecoder
 
 
 class ClaimQA(LongFormUQ):
     def __init__(
         self,
         llm: BaseChatModel,
-        claim_decomposition_llm: BaseChatModel = None,
-        question_generator_llm: BaseChatModel = None,
         scorers: Optional[List[str]] = None,
         granularity: str = "claim",
         aggregation: str = "mean",
+        num_questions: int = 1,
+        num_claim_qa_responses: int = 5,
         claim_refinement: bool = False,
         claim_refinement_threshold: float = 1 / 3,
         system_prompt: str = "You are a helpful assistant.",
+        claim_decomposition_llm: BaseChatModel = None,
+        question_generator_llm: BaseChatModel = None,
         sampling_temperature: float = 1.0,
         max_calls_per_min: Optional[int] = None,
         questioner_max_calls_per_min: Optional[int] = None,
-        num_questions: int = 1,
-        num_claim_qa_responses: int = 5,
         max_length: int = 1000,
         device: Any = None,
         use_n_param: bool = False,
@@ -100,23 +98,12 @@ class ClaimQA(LongFormUQ):
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
         """
-        super().__init__(llm=llm, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
+        self.scorers = ["semantic_negentropy"] if not scorers else scorers
+        super().__init__(llm=llm, granularity=granularity, aggregation=aggregation, scorers=self.scorers, claim_refinement=claim_refinement, claim_refinement_threshold=claim_refinement_threshold, claim_decomposition_llm=claim_decomposition_llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
         self.num_questions = num_questions
         self.num_claim_qa_responses = num_claim_qa_responses
-        self.granularity = granularity
-        self.claim_refinement = claim_refinement
-        self.claim_refinement_threshold = claim_refinement_threshold
-        self.aggregation = aggregation
-        self.scorers = scorers
-
-        self.decomposer = ResponseDecomposer(claim_decomposition_llm=claim_decomposition_llm if claim_decomposition_llm else llm)
         self.question_generator = QuestionGenerator(question_generator_llm=question_generator_llm if question_generator_llm is not None else self.decomposer.claim_decomposition_llm, max_calls_per_min=questioner_max_calls_per_min, num_questions=self.num_questions)
-        self.bb_object = BlackBoxUQ(llm=llm, scorers=scorers, device=device, max_calls_per_min=max_calls_per_min, sampling_temperature=sampling_temperature, max_length=max_length)
-        if self.claim_refinement:
-            if self.granularity != "claim":
-                raise ValueError("Uncertainty aware decoding is only possible with claim-level scoring. Please set claim_refinement=False or granularity='claim'")
-            self.reconstructor = UncertaintyAwareDecoder(reconstructor_llm=self.decomposer.claim_decomposition_llm, threshold=self.claim_refinement_threshold, aggregation=self.aggregation)
-            self.uad_scorer = self.scorers[0]
+        self.bb_object = BlackBoxUQ(llm=llm, scorers=self.scorers, device=device, max_calls_per_min=max_calls_per_min, sampling_temperature=sampling_temperature, max_length=max_length)
         self.uad_result = {}
 
     async def generate_and_score(self, prompts: List[str], claim_refinement_threshold: float = 1 / 3, show_progress_bars: Optional[bool] = True) -> UQResult:
@@ -125,10 +112,11 @@ class ClaimQA(LongFormUQ):
 
         Parameters
         ----------
-        prompts : List[str]
-            A list of prompts to generate responses from LLM.
-        progress_bar : Optional[Progress], default=None
-            A progress bar to display the progress of the generation.
+        prompts : list of str
+            A list of input prompts for the model.
+
+        show_progress_bars : bool, default=True
+            If True, displays progress bars while generating and scoring responses.
         """
         self._construct_progress_bar(show_progress_bars)
         self._display_generation_header(show_progress_bars)
@@ -142,10 +130,14 @@ class ClaimQA(LongFormUQ):
 
         Parameters
         ----------
-        responses : List[str]
-            A list of responses to be scored.
-        progress_bar : Optional[Progress], default=None
-            A progress bar to display the progress of the evaluation.
+        prompts : list of str
+            A list of input prompts for the model.
+
+        responses : list of str
+            A list of model responses for the prompts.
+
+        show_progress_bars : bool, default=True
+            If True, displays a progress bar while scoring responses
         """
         self.prompts = prompts
         self.responses = responses
@@ -158,31 +150,19 @@ class ClaimQA(LongFormUQ):
 
     async def _score_from_decomposed(self, claim_sets: List[List[str]], responses: Optional[List[str]] = None, prompts: Optional[List[str]] = None, progress_bar: Optional[Progress] = None):
         """
-        Evaluate the ClaimQA scores for a given set of prompts, responses, and claim_sets.
+        Evaluate the ClaimQA scores for a given set of prompts and claim_sets.
         """
         self.claim_sets = claim_sets
         self.prompts = [None] * len(claim_sets) if not prompts else prompts
         self.responses = [None] * len(claim_sets) if not responses else responses
 
-        responses_flat, prompts_flat = [], []
-        for prompt, response, claim_set in zip(self.prompts, self.responses, self.claim_sets):
+        prompts_flat = []
+        for prompt, claim_set in zip(self.prompts, self.claim_sets):
             prompts_flat.extend([prompt] * len(claim_set) * self.num_questions)
-            responses_flat.extend([response] * len(claim_set) * self.num_questions)
         num_claims = [len(claim_set) for claim_set in self.claim_sets]
 
-        generated_questions = await self.question_generator.generate_questions(
-            claim_sets=self.claim_sets,
-            # responses=self.responses,
-            progress_bar=progress_bar,
-        )
-        formatted_claim_questions = [
-            get_answer_template(
-                claim_question=generated_questions[i],
-                original_question=prompts_flat[i],
-                # original_response=responses_flat[i]
-            )
-            for i in range(len(generated_questions))
-        ]
+        generated_questions = await self.question_generator.generate_questions(claim_sets=self.claim_sets, progress_bar=progress_bar)
+        formatted_claim_questions = [get_answer_template(claim_question=generated_questions[i], original_question=prompts_flat[i]) for i in range(len(generated_questions))]
 
         self.bb_object.progress_bar = progress_bar
         self.bb_object.generation_type = "claim_qa"

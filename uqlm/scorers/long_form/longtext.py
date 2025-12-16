@@ -3,10 +3,8 @@ from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
 from uqlm.scorers.long_form.baseclass.uncertainty import LongFormUQ
 from uqlm.utils.results import UQResult
-from uqlm.longform.black_box.matched_unit import MatchedUnitScorer
-from uqlm.longform.black_box.unit_response import UnitResponseScorer
-from uqlm.longform.decomposition import ResponseDecomposer
-from uqlm.longform.uad import UncertaintyAwareDecoder
+from uqlm.longform.luq.matched_unit import MatchedUnitScorer
+from uqlm.longform.luq.unit_response import UnitResponseScorer
 
 UNIT_RESPONSE_SCORERS = ["entailment", "noncontradiction", "contrasted_entailment"]
 MATCHED_UNIT_SCORERS = UNIT_RESPONSE_SCORERS + ["bert_score", "cosine_sim"]
@@ -68,8 +66,8 @@ class LongTextUQ(LongFormUQ):
             If granularity="claim" and claim_decomposition_llm is None, the provided `llm` will be used for claim decomposition.
 
         device: str or torch.device input or torch.device object, default="cpu"
-            Specifies the device that NLI model use for prediction. Applies to 'luq', 'luq_atomic'
-            scorers. Pass a torch.device to leverage GPU.
+            Specifies the device that NLI model use for prediction. If None, detects and returns the best available PyTorch device.
+            Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
 
         nli_model_name : str, default="microsoft/deberta-large-mnli"
             Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
@@ -93,18 +91,12 @@ class LongTextUQ(LongFormUQ):
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
         """
-        super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
+        self.scorers = ["entailment"] if not scorers else scorers
+        super().__init__(llm=llm, granularity=granularity, aggregation=aggregation, scorers=self.scorers, claim_refinement=claim_refinement, claim_refinement_threshold=claim_refinement_threshold, claim_decomposition_llm=claim_decomposition_llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
+        self.nli_model_name = nli_model_name
         self.mode = mode
-        self.granularity = granularity
-        self.aggregation = aggregation
         self.max_length = max_length
         self.sampling_temperature = sampling_temperature
-        self.nli_model_name = nli_model_name
-        self.claim_decomposition_llm = claim_decomposition_llm
-        self.decomposer = ResponseDecomposer(claim_decomposition_llm=claim_decomposition_llm if claim_decomposition_llm else llm)
-        self.scorers = scorers
-        self.claim_refinement = claim_refinement
-        self.claim_refinement_threshold = claim_refinement_threshold
         self._validate_scorers()
         self.prompts = None
         self.responses = None
@@ -246,17 +238,8 @@ class LongTextUQ(LongFormUQ):
 
     def _validate_scorers(self) -> None:
         """Validate scorers"""
-        if not self.scorers:
-            self.scorers = ["entailment"]
-
         self.matched_unit_scorer = None
         self.unit_response_scorer = None
-        if self.granularity not in ["sentence", "claim"]:
-            raise ValueError(
-                f"""
-                Invalid granularity: {self.granularity}. Must be one of "sentence", "claim"
-                """
-            )
         if self.mode == "unit_response":
             if set(self.scorers) - set(UNIT_RESPONSE_SCORERS):
                 raise ValueError(
@@ -279,8 +262,3 @@ class LongTextUQ(LongFormUQ):
                 Invalid mode: {self.mode}. Must be one of "unit_response", "matched_unit"
                 """
             )
-        if self.claim_refinement:
-            if self.granularity != "claim":
-                raise ValueError("Uncertainty aware decoding is only possible with claim-level scoring. Please set claim_refinement=False or granularity='claim'")
-            self.reconstructor = UncertaintyAwareDecoder(reconstructor_llm=self.decomposer.claim_decomposition_llm, threshold=self.claim_refinement_threshold, aggregation=self.aggregation)
-            self.uad_scorer = self.scorers[0]
