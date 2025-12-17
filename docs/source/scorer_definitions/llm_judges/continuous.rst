@@ -8,7 +8,7 @@ Continuous Judge
 The continuous judge template instructs an LLM to directly score a question-response concatenation's
 correctness on a scale of 0 to 1.
 
-Mathematical Definition
+Definition
 -----------------------
 
 For the continuous template, the LLM is asked to provide a numerical score:

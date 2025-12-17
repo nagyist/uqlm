@@ -8,7 +8,7 @@ Probability Margin
 Probability Margin (PM) computes the average difference between the top two token probabilities
 for each token in the response.
 
-Mathematical Definition
+Definition
 -----------------------
 
 This scorer requires accessing the top-K logprobs per token (K ≥ 2). Let the top-K token probabilities

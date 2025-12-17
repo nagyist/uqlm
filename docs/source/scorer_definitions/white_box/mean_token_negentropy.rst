@@ -9,7 +9,7 @@ Mean Token Negentropy (MTN) computes the entropy of each token using the top-K l
 them to normalized negentropy scores, and averages these scores to obtain a confidence score for
 each response.
 
-Mathematical Definition
+Definition
 -----------------------
 
 This scorer requires accessing the top-K logprobs per token. Let the top-K token probabilities for

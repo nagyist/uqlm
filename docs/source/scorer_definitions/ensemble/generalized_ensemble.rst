@@ -6,7 +6,7 @@ Generalized Ensemble
 The Generalized Ensemble allows you to create custom combinations of any black-box, white-box, and
 LLM-as-a-Judge scorers with configurable weights.
 
-Mathematical Definition
+Definition
 -----------------------
 
 Given a set of :math:`n` component scorers with scores :math:`s_1, s_2, ..., s_n` and weights

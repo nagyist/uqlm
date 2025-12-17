@@ -9,7 +9,7 @@ P(True) is a self-reflection method that presents an LLM with its own previous r
 to classify the statement as "True" or "False". The confidence score is derived from the token
 probability for the "True" answer.
 
-Mathematical Definition
+Definition
 -----------------------
 
 Given a prompt :math:`x` and the LLM's response :math:`y`, the P(True) scorer:

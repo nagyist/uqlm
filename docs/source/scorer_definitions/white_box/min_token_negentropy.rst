@@ -8,7 +8,7 @@ Minimum Token Negentropy
 Minimum Token Negentropy (MinTN) uses the minimum among token-level negentropies for a given response
 as a confidence score.
 
-Mathematical Definition
+Definition
 -----------------------
 
 This scorer requires accessing the top-K logprobs per token. Let the top-K token probabilities for

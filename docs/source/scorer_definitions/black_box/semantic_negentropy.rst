@@ -8,7 +8,7 @@ Normalized Semantic Negentropy
 Normalized Semantic Negentropy (NSN) normalizes the standard computation of discrete semantic entropy
 to be increasing with higher confidence and have :math:`[0,1]` support.
 
-Mathematical Definition
+Definition
 -----------------------
 
 In contrast to exact match and non-contradiction scorers, semantic entropy does not distinguish between

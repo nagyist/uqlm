@@ -8,7 +8,7 @@ Non-Contradiction Probability
 Non-Contradiction Probability (NCP) computes the mean non-contradiction probability estimated by a
 natural language inference (NLI) model.
 
-Mathematical Definition
+Definition
 -----------------------
 
 This score is formally defined as follows:

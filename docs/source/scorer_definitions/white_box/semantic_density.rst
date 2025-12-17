@@ -8,7 +8,7 @@ Semantic Density
 Semantic Density (SD) approximates a probability density function (PDF) in semantic space for
 estimating response correctness.
 
-Mathematical Definition
+Definition
 -----------------------
 
 Given a prompt :math:`x` with candidate response :math:`y_*`, the objective is to construct a PDF

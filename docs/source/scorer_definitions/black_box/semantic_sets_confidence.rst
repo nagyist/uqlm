@@ -8,7 +8,7 @@ Semantic Sets Confidence
 Semantic Sets Confidence (SSC) counts the number of unique response sets (clusters) obtained during
 the computation of semantic entropy and normalizes this count to obtain a confidence score.
 
-Mathematical Definition
+Definition
 -----------------------
 
 Let :math:`N_C` denote the number of unique semantic clusters and :math:`m` denote the number of

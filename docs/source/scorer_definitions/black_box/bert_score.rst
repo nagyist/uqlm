@@ -8,7 +8,7 @@ BERTScore
 BERTScore leverages contextualized BERT embeddings to measure the semantic similarity between
 the original response and sampled candidate responses.
 
-Mathematical Definition
+Definition
 -----------------------
 
 Let a tokenized text sequence be denoted as :math:`\mathbf{t} = \{t_1,...,t_L\}` and the corresponding

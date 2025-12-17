@@ -8,7 +8,7 @@ Entailment Probability
 Entailment Probability (EP) computes the mean entailment probability estimated by a natural language
 inference (NLI) model.
 
-Mathematical Definition
+Definition
 -----------------------
 
 This score is formally defined as follows:

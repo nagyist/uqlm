@@ -21,7 +21,7 @@ you to leverage diverse LLM perspectives for improved evaluation reliability.
 - **Minimum (``min``):** Most conservative judge assessment
 - **Median (``median``):** Middle value, robust to outliers
 
-Mathematical Definition
+Definition
 -----------------------
 
 Let :math:`J_1, J_2, ..., J_n` be :math:`n` judges and :math:`s_k = J_k(y_i)` be the score from

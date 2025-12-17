@@ -8,7 +8,7 @@ Minimum Token Probability
 Minimum Token Probability (MTP) uses the minimum among token probabilities for a given response
 as a confidence score.
 
-Mathematical Definition
+Definition
 -----------------------
 
 Minimum token probability is defined as:

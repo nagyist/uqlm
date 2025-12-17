@@ -8,7 +8,7 @@ Ternary Judge (True/False/Uncertain)
 The ternary judge template instructs an LLM to score a question-response concatenation as either
 *incorrect*, *uncertain*, or *correct* using a carefully constructed prompt.
 
-Mathematical Definition
+Definition
 -----------------------
 
 We follow the approach proposed by Chen & Mueller (2023), where an LLM is instructed to score a

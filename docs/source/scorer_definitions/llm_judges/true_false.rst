@@ -8,7 +8,7 @@ Binary Judge (True/False)
 The binary judge template instructs an LLM to classify a question-response as either *correct* or
 *incorrect*.
 
-Mathematical Definition
+Definition
 -----------------------
 
 This template modifies the ternary approach to include only two categories:
