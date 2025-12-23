@@ -9,7 +9,7 @@ The Likert scale judge template instructs an LLM to score a question-response on
 which is then normalized to the :math:`[0, 1]` range.
 
 Definition
------------------------
+----------
 
 The judge is asked to score on a 5-point Likert scale, which is converted to normalized scores:
 

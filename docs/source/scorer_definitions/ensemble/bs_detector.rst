@@ -7,7 +7,7 @@ The BS Detector is an off-the-shelf ensemble method proposed by Chen & Mueller (
 three components: exact match rate, non-contradiction probability, and LLM-as-a-Judge (self-reflection).
 
 Definition
------------------------
+----------
 
 The BS Detector ensemble score is computed as:
 

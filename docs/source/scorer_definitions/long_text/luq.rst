@@ -9,7 +9,7 @@ Consistency and Confidence Approach (CoCoA) leverages two distinct signals: (1) 
 an original response and sampled responses, and (2) token probabilities from the original response.
 
 Definition
-----------
+-----------------------
 
 Let :math:`y_0` be the original response and :math:`y_1, ..., y_m` be :math:`m` sampled responses.
 

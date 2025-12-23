@@ -9,7 +9,7 @@ BERTScore leverages contextualized BERT embeddings to measure the semantic simil
 the original response and sampled candidate responses.
 
 Definition
------------------------
+----------
 
 Let a tokenized text sequence be denoted as :math:`\mathbf{t} = \{t_1,...,t_L\}` and the corresponding
 contextualized word embeddings as :math:`\mathbf{E} = \{\mathbf{e}_1,...,\mathbf{e}_L\}`, where :math:`L`

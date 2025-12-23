@@ -9,7 +9,7 @@ Token-probability-based Semantic Negentropy extends the discrete semantic entrop
 token probabilities to weight the cluster probabilities, providing a more nuanced uncertainty estimate.
 
 Definition
------------------------
+----------
 
 Under this approach, responses are clustered using an NLI model based on mutual entailment. After
 obtaining the set of clusters :math:`\mathcal{C}`, semantic entropy is computed as:

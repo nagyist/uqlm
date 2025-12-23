@@ -9,7 +9,7 @@ Normalized Semantic Negentropy (NSN) normalizes the standard computation of disc
 to be increasing with higher confidence and have :math:`[0,1]` support.
 
 Definition
------------------------
+----------
 
 In contrast to exact match and non-contradiction scorers, semantic entropy does not distinguish between
 an original response and candidate responses. Instead, this approach computes a single metric value on

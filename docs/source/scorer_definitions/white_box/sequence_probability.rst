@@ -8,7 +8,7 @@ Sequence Probability
 Sequence Probability (SP) computes the joint probability of all tokens in the generated response.
 
 Definition
------------------------
+----------
 
 Sequence probability is the joint probability of all tokens:
 

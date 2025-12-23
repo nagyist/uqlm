@@ -9,7 +9,7 @@ The continuous judge template instructs an LLM to directly score a question-resp
 correctness on a scale of 0 to 1.
 
 Definition
------------------------
+----------
 
 For the continuous template, the LLM is asked to provide a numerical score:
 

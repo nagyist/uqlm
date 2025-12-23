@@ -10,7 +10,7 @@ to classify the statement as "True" or "False". The confidence score is derived 
 probability for the "True" answer.
 
 Definition
------------------------
+----------
 
 Given a prompt :math:`x` and the LLM's response :math:`y`, the P(True) scorer:
 

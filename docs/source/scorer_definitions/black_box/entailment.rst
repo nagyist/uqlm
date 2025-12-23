@@ -9,7 +9,7 @@ Entailment Probability (EP) computes the mean entailment probability estimated b
 inference (NLI) model.
 
 Definition
------------------------
+----------
 
 This score is formally defined as follows:
 

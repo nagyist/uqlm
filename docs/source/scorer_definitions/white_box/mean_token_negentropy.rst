@@ -10,7 +10,7 @@ them to normalized negentropy scores, and averages these scores to obtain a conf
 each response.
 
 Definition
------------------------
+----------
 
 This scorer requires accessing the top-K logprobs per token. Let the top-K token probabilities for
 token :math:`t_j` be denoted as :math:`\{p_{t_{jk}}\}_{k=1}^K`.
