@@ -1,95 +1,66 @@
-Consistency and Confidence (CoCoA)
-==================================
+Long-Text Uncertainty Quantification (LUQ)
+==========================================
 
 .. currentmodule:: uqlm.scorers
 
-``consistency_and_confidence``
-
-Consistency and Confidence Approach (CoCoA) leverages two distinct signals: (1) similarity between
-an original response and sampled responses, and (2) token probabilities from the original response.
-
 Definition
------------------------
+----------
 
-Let :math:`y_0` be the original response and :math:`y_1, ..., y_m` be :math:`m` sampled responses.
-
-**Step 1: Compute Length-Normalized Token Probability**
+The Long-text UQ (LUQ) approach demonstrated here is adapted from Zhang et al. (2024). Similar to standard black-box UQ, this approach requires generating a original response and sampled candidate responses to the same prompt. The original response is then decomposed into units (claims or sentences). Unit-level confidence scores are then obtained by averaging entailment probabilities across candidate responses:
 
 .. math::
 
-    LNTP(y_0) = \prod_{t \in y_0} p_t^{\frac{1}{L_0}}
+    c_g(s; \mathbf{y}_{\text{cand}}) = \frac{1}{m} \sum_{j=1}^m P(\text{entail}|y_j, s
 
-**Step 2: Compute Normalized Cosine Similarity**
-
-Average cosine similarity across pairings of the original response with all sampled responses,
-normalized to :math:`[0,1]`:
-
-.. math::
-
-    NCS(y_0; y_1, ..., y_m) = \frac{1}{m} \sum_{i=1}^m \frac{\cos(y_0, y_i) + 1}{2}
-
-**Step 3: Compute CoCoA Score**
-
-CoCoA is the product of these two terms:
-
-.. math::
-
-    CoCoA(y_0; y_1, ..., y_m) = LNTP(y_0) \cdot NCS(y_0; y_1, ..., y_m)
+where :math:`\mathbf{y}^{(s)}_{\text{cand}} = {y_1^{(s)}, ..., y_m^{(s)}}` are :math:`m` candidate responses, and :math:`P(\text{entail}|y_j, s)` denotes the NLI-estimated probability that $s$ is entailed in :math:`y_j`.
 
 **Key Properties:**
 
-- Combines token-level confidence with response-level consistency
-- Multiplicative combination ensures both signals must be high for high confidence
+- Claim or sententence-level scoring
+- Less complex (cost and latency) than other long-form scoring methods
 - Score range: :math:`[0, 1]`
 
 How It Works
 ------------
 
-1. Generate an original response with logprobs enabled
-2. Generate multiple sampled responses from the same prompt
-3. Compute the length-normalized probability of the original response
-4. Encode all responses using a sentence transformer and compute cosine similarities
-5. Multiply the probability and similarity scores
-
-This approach is particularly effective because it requires both:
-
-- The model to be confident in its token predictions (high probability)
-- The responses to be semantically consistent (high similarity)
+1. Generate an original response and sampled responses
+2. Decompose original response into units (claims or sentences)
+3. Obtain entailment probabilities of units in original response with respect to sampled responses
+4. For each unit, average entailment probabilities across sampled responses
 
 Parameters
 ----------
 
-When using :class:`WhiteBoxUQ`, specify ``"consistency_and_confidence"`` in the ``scorers`` list.
+When using :class:`LongTextUQ`, specify ``"entailment"`` (or alternative scoring function) in the ``scorers`` list.
 
 Example
 -------
 
 .. code-block:: python
 
-    from uqlm import WhiteBoxUQ
+    from uqlm import LongTextUQ
 
-    # Initialize with consistency_and_confidence scorer
-    wbuq = WhiteBoxUQ(
-        llm=llm,
-        scorers=["consistency_and_confidence"],
+    # Initialize 
+    luq = LongTextUQ(
+        llm=original_llm,
+        claim_decomposition_llm=claim_decomposition_llm,
+        scorers=["entailment"],
         sampling_temperature=1.0
     )
 
     # Generate responses and compute scores
-    results = await wbuq.generate_and_score(prompts=prompts, num_responses=5)
+    results = await luq.generate_and_score(prompts=prompts, num_responses=5)
 
-    # Access the consistency_and_confidence scores
-    print(results.to_df()["consistency_and_confidence"])
+    # Access the claim-level scores
+    print(results.to_df()["claims_data"])
 
 References
 ----------
 
-- Vashurin, R., et al. (2025). `CoCoA: Towards Efficient Multi-Criteria Conformal Calibration of Large Language Models <https://arxiv.org/abs/2502.04964>`_. *arXiv*.
+- Zhang, C., et al. (2024). `LUQ: Long-text Uncertainty Quantification for LLMs <https://arxiv.org/abs/2403.20279>`_. *arXiv*.
 
 See Also
 --------
 
-- :class:`WhiteBoxUQ` - Main class for white-box uncertainty quantification
-- :doc:`monte_carlo_probability` - Alternative multi-generation scorer
-- :doc:`/scorer_definitions/black_box/cosine_sim` - Black-box cosine similarity scorer
+- :class:`LongTextUQ` - Class for LUQ-style scoring for long-form generations
 

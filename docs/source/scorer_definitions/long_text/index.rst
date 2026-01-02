@@ -1,53 +1,66 @@
-White-Box Scorers
+Long-Text Scorers
 =================
 
-White-box Uncertainty Quantification (UQ) methods leverage token probabilities to estimate uncertainty.
-These scorers offer single-generation scoring, which is significantly faster and cheaper than black-box
-methods, but require access to the LLM's internal probabilities.
+Long-form uncertainty quantification implements a three-stage pipeline after response generation:
+
+1. Response Decomposition: The response $y$ is decomposed into units (claims or sentences), where a unit as denoted as $s$.
+
+2. Unit-Level Confidence Scoring: Confidence scores are computed using function $c_g(s;\cdot) \in [0, 1]$. Higher scores indicate greater likelihood of factual correctness. Units with scores below threshold $\tau$ are flagged as potential hallucinations.
+
+3. Response-Level Aggregation: Unit scores are combined to provide an overall response confidence.
 
 **Key Characteristics:**
 
-- **Minimal Latency:** Token probabilities are already returned by the LLM
-- **No Added Cost:** Doesn't require additional LLM calls (for single-generation scorers)
-- **High Performance:** Access to internal model states provides rich uncertainty signals
+- **Universal Compatibility:** Works with any LLM without requiring token probability access
+- **Fine-Grained Scoring:** Score at sentence or claim-level to localize likely hallucinations
+- **Uncertainty-aware decoding:** Improve factual precision by dropping high-uncertainty claims
 
 **Trade-offs:**
 
-- **Limited Compatibility:** Requires access to token probabilities, not available for all LLMs/APIs
+- **Higher Cost:** Requires multiple generations per prompt
+- **Limited Compatibility:** Multiple generations and comparison calculations increase latency
 
-**Notation:**
 
-Let the tokenization of LLM response :math:`y_i` be denoted as :math:`\{t_1,...,t_{L_i}\}`, where
-:math:`L_i` denotes the number of tokens in the response. Let :math:`p_t` denote the token probability
-for token :math:`t`.
+Claim-Response Scorers
+----------------------
 
-Single-Generation Scorers
--------------------------
-
-These scorers require only one LLM generation and use the token probabilities from that single response.
+These scorers directly compare claims or sentences in the original responses with sampled responses generated from the same prompt.
 
 .. toctree::
    :maxdepth: 1
 
-   sequence_probability
-   normalized_probability
-   min_probability
-   mean_token_negentropy
-   min_token_negentropy
-   probability_margin
+   entailment
+   noncontradiction
+   contrasted_entailment
 
-Multi-Generation Scorers
-------------------------
+Graph-Based Scorers
+-------------------
 
-These scorers generate multiple responses from the same prompt, combining the sampling approach of
-black-box UQ with token-probability-based signals.
+These scorers decompose original and sampled responses into claims, obtain the union of unique claims across all responses, and compute graph centrality metrics on the bipartite graph of claim-response entailment to measure uncertainty.
 
 .. toctree::
    :maxdepth: 1
 
-   monte_carlo_probability
-   consistency_and_confidence
-   semantic_negentropy_whitebox
-   semantic_density
-   p_true
+   closeness_centrality
+   harmonic_centrality
+   degree_centrality
+   betweenness_centrality
+   laplacian_centrality
+   page_rank
 
+
+Claim-QA Scorers
+----------------
+
+These scorers decompose responses into granular units (sentences or claims), convert each claim or sentence to a question, sample LLM responses to those questions, and measure consistency among those answers to score the claim.
+
+.. toctree::
+   :maxdepth: 1
+
+   semantic_negentropy
+   semantic_sets_confidence
+   noncontradiction
+   entailment
+   exact_match
+   bert_score
+   cosine_sim

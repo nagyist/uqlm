@@ -49,7 +49,7 @@ How It Works
 2. Generate multiple sampled responses from the same prompt
 3. Compute the length-normalized probability of the original response
 4. Encode all responses using a sentence transformer and compute cosine similarities
-5. Multiply the probability and similarity scores
+5. Multiply the probability and average similarity score
 
 This approach is particularly effective because it requires both:
 
