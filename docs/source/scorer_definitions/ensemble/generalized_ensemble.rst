@@ -7,7 +7,7 @@ The Generalized Ensemble allows you to create custom combinations of any black-b
 LLM-as-a-Judge scorers with configurable weights.
 
 Definition
------------------------
+----------
 
 Given a set of :math:`n` component scorers with scores :math:`s_1, s_2, ..., s_n` and weights
 :math:`w_1, w_2, ..., w_n`, the ensemble score is:

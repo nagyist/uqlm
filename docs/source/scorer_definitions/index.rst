@@ -14,4 +14,5 @@ For detailed API documentation and usage examples, see the :doc:`API Reference <
    white_box/index
    llm_judges/index
    ensemble/index
+   long_text/index
 

@@ -9,7 +9,7 @@ Probability Margin (PM) computes the average difference between the top two toke
 for each token in the response.
 
 Definition
------------------------
+----------
 
 This scorer requires accessing the top-K logprobs per token (K ≥ 2). Let the top-K token probabilities
 for token :math:`t_j` be denoted as :math:`\{p_{t_{jk}}\}_{k=1}^K`, ordered by decreasing probability.

@@ -9,7 +9,7 @@ Length-Normalized Token Probability (LNTP) computes a length-normalized analog o
 making it invariant to response length.
 
 Definition
------------------------
+----------
 
 Length-normalized token (sequence) probability computes a length-normalized analog of joint token probability:
 

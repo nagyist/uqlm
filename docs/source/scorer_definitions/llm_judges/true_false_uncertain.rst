@@ -9,7 +9,7 @@ The ternary judge template instructs an LLM to score a question-response concate
 *incorrect*, *uncertain*, or *correct* using a carefully constructed prompt.
 
 Definition
------------------------
+----------
 
 We follow the approach proposed by Chen & Mueller (2023), where an LLM is instructed to score a
 question-response as one of three categories. These categories are mapped to numerical scores:

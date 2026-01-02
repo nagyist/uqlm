@@ -9,7 +9,7 @@ Consistency and Confidence Approach (CoCoA) leverages two distinct signals: (1) 
 an original response and sampled responses, and (2) token probabilities from the original response.
 
 Definition
------------------------
+----------
 
 Let :math:`y_0` be the original response and :math:`y_1, ..., y_m` be :math:`m` sampled responses.
 
@@ -49,7 +49,7 @@ How It Works
 2. Generate multiple sampled responses from the same prompt
 3. Compute the length-normalized probability of the original response
 4. Encode all responses using a sentence transformer and compute cosine similarities
-5. Multiply the probability and similarity scores
+5. Multiply the probability and average similarity score
 
 This approach is particularly effective because it requires both:
 

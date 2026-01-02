@@ -9,7 +9,7 @@ Monte Carlo Sequence Probability (MCSP) computes the average length-normalized s
 across multiple sampled responses.
 
 Definition
------------------------
+----------
 
 Let :math:`y_1, y_2, ..., y_m` denote :math:`m` sampled responses generated from the same prompt.
 Monte Carlo Sequence Probability is defined as:

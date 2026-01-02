@@ -9,7 +9,7 @@ Normalized Cosine Similarity (NCS) leverages a sentence transformer to map LLM o
 embedding space and measure similarity using those sentence embeddings.
 
 Definition
------------------------
+----------
 
 Let :math:`V: \mathcal{Y} \rightarrow \mathbb{R}^d` denote the sentence transformer, where :math:`d`
 is the dimension of the embedding space.

@@ -9,7 +9,7 @@ Exact Match Rate (EMR) computes the proportion of candidate responses that are i
 original response.
 
 Definition
------------------------
+----------
 
 The Exact Match Rate is defined as:
 
