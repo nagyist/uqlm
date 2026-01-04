@@ -22,7 +22,20 @@ from uqlm.longform.uad import UncertaintyAwareDecoder
 
 
 class LongFormUQ(UncertaintyQuantifier):
-    def __init__(self, llm: Any = None, scorers: Optional[List[str]] = None, granularity: str = "claim", aggregation: str = "mean", claim_decomposition_llm: Optional[BaseChatModel] = None, response_refinement: bool = False, claim_filtering_scorer: Optional[str] = None, device: Any = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False) -> None:
+    def __init__(
+        self, 
+        llm: Any = None, 
+        scorers: Optional[List[str]] = None, 
+        granularity: str = "claim", 
+        aggregation: str = "mean", 
+        claim_decomposition_llm: Optional[BaseChatModel] = None, 
+        response_refinement: bool = False, 
+        claim_filtering_scorer: Optional[str] = None, 
+        device: Any = None, 
+        system_prompt: Optional[str] = None, 
+        max_calls_per_min: Optional[int] = None, 
+        use_n_param: bool = False
+    ) -> None:
         """
         Parent class for uncertainty quantification of LLM responses
 
