@@ -50,11 +50,7 @@ class LongTextQA(LongFormUQ):
             scores below the response_refinement_threshold and uses the claim_decomposition_llm to reconstruct the response from
             the retained claims. Only available for claim-level granularity. For more details, refer to
             Jiang et al., 2024: https://arxiv.org/abs/2410.20783
-
-        response_refinement_threshold : float, default=1/3
-            Threshold for uncertainty-aware filtering. Claims with confidence scores below this threshold are dropped from the
-            refined response. Only used if response_refinement is True.
-
+            
         claim_decomposition_llm : langchain `BaseChatModel`, default=None
             A langchain llm `BaseChatModel` to be used for decomposing responses into individual claims. Also used for claim refinement.
             If granularity="claim" and claim_decomposition_llm is None, the provided `llm` will be used for claim decomposition.
@@ -125,21 +121,21 @@ class LongTextQA(LongFormUQ):
 
     async def score(self, prompts: List[str], responses: List[str], num_questions: int = 1, num_claim_qa_responses: int = 5, response_refinement_threshold: float = 1 / 3, show_progress_bars: Optional[bool] = True) -> UQResult:
         """
-        Evaluate the QuesAns scores for a given set of claim_sets.
+        Decompose responses, generate questions for each claim/sentence, sample LLM responses to the questions, and score consistency on those generated answers to measure confidence.
 
         Parameters
         ----------
         prompts : list of str
             A list of input prompts for the model.
+            
+        responses : list of str
+            A list of model responses for the prompts.
 
         num_questions : int, default=1
             The number of questions to generate for each claim/sentence.
 
         num_claim_qa_responses : int, default=5
             The number of responses to generate for each claim-inverted question.
-
-        responses : list of str
-            A list of model responses for the prompts.
 
         response_refinement_threshold : float, default=1/3
             Threshold for uncertainty-aware filtering. Claims with confidence scores below this threshold are dropped from the
