@@ -23,18 +23,7 @@ from uqlm.longform.uad import UncertaintyAwareDecoder
 
 class LongFormUQ(UncertaintyQuantifier):
     def __init__(
-        self, 
-        llm: Any = None, 
-        scorers: Optional[List[str]] = None, 
-        granularity: str = "claim", 
-        aggregation: str = "mean", 
-        claim_decomposition_llm: Optional[BaseChatModel] = None, 
-        response_refinement: bool = False, 
-        claim_filtering_scorer: Optional[str] = None, 
-        device: Any = None, 
-        system_prompt: Optional[str] = None, 
-        max_calls_per_min: Optional[int] = None, 
-        use_n_param: bool = False
+        self, llm: Any = None, scorers: Optional[List[str]] = None, granularity: str = "claim", aggregation: str = "mean", claim_decomposition_llm: Optional[BaseChatModel] = None, response_refinement: bool = False, claim_filtering_scorer: Optional[str] = None, device: Any = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False
     ) -> None:
         """
         Parent class for uncertainty quantification of LLM responses
@@ -44,13 +33,13 @@ class LongFormUQ(UncertaintyQuantifier):
         llm : BaseChatModel
             A langchain llm object to get passed to chain constructor. User is responsible for specifying
             temperature and other relevant parameters to the constructor of their `llm` object.
-            
+
         scorers : List[str], default=None
             Specifies which black box (consistency) scorers to include.
 
         aggregation : str, default="mean"
             Specifies how to aggregate claim/sentence-level scores to response-level scores. Must be one of 'min' or 'mean'.
-            
+
         granularity : str, default="claim"
             Specifies whether to decompose and score at claim or sentence level granularity. Must be either "claim" or "sentence"
 
@@ -63,9 +52,9 @@ class LongFormUQ(UncertaintyQuantifier):
             scores below the response_refinement_threshold and uses the claim_decomposition_llm to reconstruct the response from
             the retained claims. Only available for claim-level granularity. For more details, refer to
             Jiang et al., 2024: https://arxiv.org/abs/2410.20783
-            
+
         claim_filtering_scorer : Optional[str], default=None
-            specifies which scorer to use to filter claims if response_refinement is True. If not provided, defaults to the first 
+            specifies which scorer to use to filter claims if response_refinement is True. If not provided, defaults to the first
             element of self.scorers.
 
         device: str or torch.device input or torch.device object, default="cpu"

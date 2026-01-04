@@ -71,9 +71,9 @@ class LongTextUQ(LongFormUQ):
             scores below the response_refinement_threshold and uses the claim_decomposition_llm to reconstruct the response from
             the retained claims. Only available for claim-level granularity. For more details, refer to
             Jiang et al., 2024: https://arxiv.org/abs/2410.20783
-            
+
         claim_filtering_scorer : Optional[str], default=None
-            specifies which scorer to use to filter claims if response_refinement is True. If not provided, defaults to the first 
+            specifies which scorer to use to filter claims if response_refinement is True. If not provided, defaults to the first
             element of self.scorers.
 
         claim_decomposition_llm : langchain `BaseChatModel`, default=None

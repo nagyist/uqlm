@@ -35,7 +35,7 @@ class MatchedUnitScorer(ClaimScorer):
         ----------
         consistency_functions: List[str], default=["nli", "bert_score", "cosine_sim"]
             Specifies which semantic consistency functions to use for scoring. Must be subset of ["nli", "bert_score", "cosine_sim"]
-        
+
         device : torch.device input or torch.device object, default=None
             Specifies the device that classifiers use for prediction. Set to "cuda" for classifiers to be able to
             leverage the GPU.

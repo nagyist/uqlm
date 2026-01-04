@@ -28,7 +28,7 @@ class FactScoreGrader:
         ----------
         llm : langchain `BaseChatModel`, default=None
             A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
-            relevant parameters to the constructor of their `llm` object. This is used to grade claims against 
+            relevant parameters to the constructor of their `llm` object. This is used to grade claims against
             the FactScore answer key.
 
         max_calls_per_min : int, default=None
@@ -60,7 +60,7 @@ class FactScoreGrader:
     async def grade_claims(self, claim_sets: List[List[str]], answers: List[str], progress_bar: Optional[Progress] = None) -> List[List[bool]]:
         """
         Grade claims against FactScore answers
-        
+
         Parameters
         ----------
         claim_sets : List[List[str]]
@@ -68,7 +68,7 @@ class FactScoreGrader:
 
         answers : List[str]
             FactScore answers to grade against (typically Wikipedia texts)
-            
+
         progress_bar : rich.progress.Progress, default=None
             If provided, displays a progress bar while scoring responses
         """
@@ -88,12 +88,12 @@ class FactScoreGrader:
     async def evaluate_claim_objectivity(self, claim_sets: List[List[str]], progress_bar: Optional[Progress] = None) -> List[List[bool]]:
         """
         Evaluate whether claims are objective or subjective
-        
+
         Parameters
         ----------
         claim_sets : List[List[str]]
             List of lists of claims to be evaluated as objective or subjective
-            
+
         progress_bar : rich.progress.Progress, default=None
             If provided, displays a progress bar while scoring responses
         """

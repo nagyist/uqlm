@@ -47,7 +47,7 @@ class QuestionGenerator:
 
         responses : Optional[List[str]], default=None
             List of original responses to which the claim_sets belong
-            
+
         num_questions : int, default=1
             The number of questions to generate for each claim/sentence.
 

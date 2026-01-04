@@ -28,7 +28,7 @@ class UnitResponseScorer(ClaimScorer):
         nli_model_name : str, default="microsoft/deberta-large-mnli"
             Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
             AutoModelForSequenceClassification.from_pretrained()
-        
+
         device : torch.device input or torch.device object, default=None
             Specifies the device that classifiers use for prediction. Set to "cuda" for classifiers to be able to
             leverage the GPU.
