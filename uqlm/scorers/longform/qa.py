@@ -2,7 +2,7 @@ import numpy as np
 from typing import List, Optional, Any
 from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
-from uqlm.longform.claim_qa.question_generator import QuestionGenerator
+from uqlm.longform.qa.question_generator import QuestionGenerator
 from uqlm.utils.prompts.claim_qa import get_answer_template
 from uqlm.utils.results import UQResult
 from uqlm.scorers import BlackBoxUQ
