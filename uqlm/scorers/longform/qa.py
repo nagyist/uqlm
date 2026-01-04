@@ -31,6 +31,7 @@ class LongTextQA(LongFormUQ):
         granularity: str = "claim",
         aggregation: str = "mean",
         response_refinement: bool = False,
+        claim_filtering_scorer: Optional[str] = None,
         system_prompt: str = "You are a helpful assistant.",
         claim_decomposition_llm: BaseChatModel = None,
         question_generator_llm: BaseChatModel = None,
@@ -42,7 +43,7 @@ class LongTextQA(LongFormUQ):
         use_n_param: bool = False,
     ):
         """
-        Initialize the ClaimQAScorer.
+        Implements a generalization of the longform semantic entropy approach by Farquhar et al. (2024): https://www.nature.com/articles/s41586-024-07421-0.
 
         Parameters
         ----------
@@ -64,6 +65,10 @@ class LongTextQA(LongFormUQ):
             scores below the response_refinement_threshold and uses the claim_decomposition_llm to reconstruct the response from
             the retained claims. Only available for claim-level granularity. For more details, refer to
             Jiang et al., 2024: https://arxiv.org/abs/2410.20783
+            
+        claim_filtering_scorer : Optional[str], default=None
+            specifies which scorer to use to filter claims if response_refinement is True. If not provided, defaults to the first 
+            element of self.scorers.
             
         claim_decomposition_llm : langchain `BaseChatModel`, default=None
             A langchain llm `BaseChatModel` to be used for decomposing responses into individual claims. Also used for claim refinement.
@@ -100,7 +105,7 @@ class LongTextQA(LongFormUQ):
             avoid OutOfMemoryError
         """
         self.scorers = ["semantic_negentropy"] if not scorers else scorers
-        super().__init__(llm=llm, granularity=granularity, aggregation=aggregation, scorers=self.scorers, response_refinement=response_refinement, claim_decomposition_llm=claim_decomposition_llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
+        super().__init__(llm=llm, granularity=granularity, aggregation=aggregation, scorers=self.scorers, response_refinement=response_refinement, claim_filtering_scorer=claim_filtering_scorer, claim_decomposition_llm=claim_decomposition_llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param)
         self.question_generator = QuestionGenerator(question_generator_llm=question_generator_llm if question_generator_llm is not None else self.decomposer.claim_decomposition_llm, max_calls_per_min=questioner_max_calls_per_min)
         self.bb_object = BlackBoxUQ(llm=llm, scorers=self.scorers, device=device, max_calls_per_min=max_calls_per_min, sampling_temperature=sampling_temperature, max_length=max_length)
         self.uad_result = {}
