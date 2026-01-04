@@ -93,6 +93,9 @@ class LongFormUQ(UncertaintyQuantifier):
             if not self.claim_filtering_scorer:
                 print(f"claim_filtering_scorer is not specified for response_refinement. Defaulting to {self.scorers[0]}.")
                 self.uad_scorer = self.scorers[0]
+            elif self.claim_filtering_scorer not in self.scorers:
+                print(f"claim_filtering_scorer is contained in list of scorers. Defaulting to {self.scorers[0]}.")
+                self.uad_scorer = self.scorers[0]
             else:
                 self.uad_scorer = self.claim_filtering_scorer
 
