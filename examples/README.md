@@ -6,9 +6,9 @@ This directory contains a comprehensive collection of Jupyter notebooks demonstr
 
 The notebooks are organized into core methods, long-form techniques, and advanced approaches to help you select the best method for your needs.
 
-### Short-Form Uncertainty Quantification Tutorials
+### Tutorials for Core Uncertainty Quantification Methods
 
-| Tutorial | Best for... | LLM Compatibility | Added Cost/Latency |
+| Tutorial | Great fit for... | LLM Compatibility | Added Cost/Latency |
 |----------|-------------|-------------------|--------------|
 | [Black-Box UQ](black_box_demo.ipynb) | Quick setup with any LLM; no need for model internals | All LLMs (API-only access) | Medium-High (multiple generations and comparisons) |
 | [White-Box UQ (Single-Generation)](white_box_single_generation_demo.ipynb) | Fastest and most efficient UQ when you have token probabilities | Requires token probability access | Negligible (single generation) |
@@ -16,9 +16,9 @@ The notebooks are organized into core methods, long-form techniques, and advance
 | [LLM-as-a-Judge](judges_demo.ipynb) | Leveraging one or more LLMs to assess hallucination likelihood | All LLMs (API-only access) | Low-Medium (depends on which judge(s)) |
 | [Train a UQ Ensemble](ensemble_tuning_demo.ipynb) | Maximizing performance by combining multiple UQ methods | Depends on ensemble components | Low-High (depends on selected components) |
 
-### Long-Form Uncertainty Quantification Tutorials (for long-text outputs)
+### Tutorials for Long-Form Uncertainty Quantification Methods (for long-text outputs)
 
-| Tutorial | Best for... | LLM Compatibility | Added Cost/Latency |
+| Tutorial | Great fit for... | LLM Compatibility | Added Cost/Latency |
 |----------|-------------|-------------------|--------------|
 | [LUQ method](luq_demo.ipynb) | Detecting claim-level hallucinations in long-form text without model internals | All LLMs (API-only access) | Medium-High (operates over all claims/sentences in original response) |
 | [Graph-based method](graph_based_demo.ipynb) | Analyzing claim relationships in complex responses | All LLMs (API-only access) | Very High (operates over all claims/sentences in original response and sampled responses) |
@@ -26,13 +26,13 @@ The notebooks are organized into core methods, long-form techniques, and advance
 
 ### Other Tutorials and SOTA Method Examples
 
-| Tutorial | Best for... | LLM Compatibility | Added Cost/Latency |
+| Tutorial | Great fit for... | LLM Compatibility | Added Cost/Latency |
 |----------|-------------|-------------------|--------------|
+| [Multimodal UQ](multimodal_demo.ipynb) | Uncertainty quantification with image+text inputs | Requires image-to-text model | Varies by method |
+| [Score Calibration](score_calibration_demo.ipynb) | Converting raw scores to calibrated probabilities as a postprocessing step | Works with any UQ method | Negligible |
 | [Semantic Entropy](semantic_entropy_demo.ipynb) | State-of-the-art UQ when token probabilities are available | Requires token probability access | Medium-High (multiple generations and comparisons) |
 | [Semantic Density](semantic_density_demo.ipynb) | Newest SOTA method for high-accuracy UQ | Requires token probability access | Medium-High (multiple generations and comparisons) |
 | [BS Detector Off-the-Shelf UQ Ensemble](ensemble_off_the_shelf_demo.ipynb) | Ready-to-use ensemble without training | Depends on ensemble components | Medium-High (multiple generations and comparisons) |
-| [Multimodal UQ](multimodal_demo.ipynb) | Uncertainty quantification with image+text inputs | Requires image-to-text model | Varies by method |
-| [Score Calibration](score_calibration_demo.ipynb) | Converting raw scores to calibrated probabilities as a postprocessing step | Works with any UQ method | Negligible |
 
 
 ## Getting Started
