@@ -6,7 +6,6 @@
 # -- Path setup --------------------------------------------------------------
 import os
 import sys
-import importlib.metadata
 
 sys.path.insert(0, os.path.abspath("../../../uqlm"))
 
