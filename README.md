@@ -34,8 +34,9 @@ UQLM provides a suite of response-level scorers for quantifying the uncertainty 
 | [Black-Box Scorers](#black-box-scorers-consistency-based)      | ⏱️ Medium-High (multiple generations & comparisons)           | 💸 High (multiple LLM calls)             | 🌍 Universal (works with any LLM)                         | ✅ Off-the-shelf |
 | [White-Box Scorers](#white-box-scorers-token-probability-based)      | ⚡ Minimal\* (token probabilities already returned)   | ✔️ None\* (no extra LLM calls)             | 🔒 Limited (requires access to token probabilities)       | ✅ Off-the-shelf            |
 | [LLM-as-a-Judge Scorers](#llm-as-a-judge-scorers) | ⏳ Low-Medium (additional judge calls add latency)    | 💵 Low-High (depends on number of judges)| 🌍 Universal (any LLM can serve as judge)                     |✅  Off-the-shelf        |
-| [Ensemble Scorers](#ensemble-scorers)       | ⏱️ High-Very high (multiple generations & claim-level comparisons)       | 💸 High (multiple LLM calls)      | 🌍 Universal               | ✅  Off-the-shelf (beginner-friendly); 🛠️ Can be tuned (best for advanced users)    |
-| [Long-Text Scorers](#long-text-scorers)       | 🔀 Flexible (combines various scorers)       | 🔀 Flexible (combines various scorers)      | 🔀 Flexible (combines various scorers)                    | ✅ Off-the-shelf    |
+| [Ensemble Scorers](#ensemble-scorers)       | 🔀 Flexible (combines various scorers)       | 🔀 Flexible (combines various scorers)      | 🔀 Flexible (combines various scorers)                    | ✅  Off-the-shelf (beginner-friendly); 🛠️ Can be tuned (best for advanced users)    |
+| [Long-Text Scorers](#long-text-scorers-claim-level)        | ⏱️ High-Very high (multiple generations & claim-level comparisons)       | 💸 High (multiple LLM calls)      | 🌍 Universal               | ✅ Off-the-shelf    |
+
 
 <sup><sup> \*Does not apply to multi-generation white-box scorers, which have higher cost and latency. </sup></sup>
 
@@ -70,7 +71,7 @@ results.to_df()
   <img src="https://raw.githubusercontent.com/cvs-health/uqlm/main/assets/images/black_box_output4.png" />
 </p>
 
-Above, `use_best=True` implements mitigation so that the uncertainty-minimized responses is selected. Note that although we use `ChatOpenAI` in this example, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used. For a more detailed demo, refer to our [Black-Box UQ Demo](./examples/black_box_demo.ipynb).
+Above, `use_best=True` implements mitigation so that the uncertainty-minimized responses is selected. Note that although we use `ChatOpenAI` in this example, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used. For a more detailed demo, refer to our [Black-Box UQ Demo](./examples/black_box_demo.ipynb). 
 
 
 **Available Scorers:**
@@ -275,21 +276,17 @@ results_df
 # }
 ```
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cvs-health/uqlm/main/assets/images/long_text_output.png" />
+  <img src="https://raw.githubusercontent.com/cvs-health/uqlm/update_notebooks/assets/images/long_text_output.png" />
 </p>
 
-Above `response` and `entailment` reflect the original response and response-level confidence score, while `refined_response` and `refined_entailment` are the corresponding fields after response refinement. The `claims_data` column includes granular data for each response, including claims, claim-level confidence scores, and whether each claim is retained in the response refinement process. We use `ChatOpenAI` in this example, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used. For a more detailed demo, refer to our [Black-Box UQ Demo](./examples/black_box_demo.ipynb).
+Above `response` and `entailment` reflect the original response and response-level confidence score, while `refined_response` and `refined_entailment` are the corresponding values after response refinement. The `claims_data` column includes granular data for each response, including claims, claim-level confidence scores, and whether each claim is retained in the response refinement process. We use `ChatOpenAI` in this example, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used. For a more detailed demo, refer to our [Long-Text UQ Demo](./examples/long_text_uq_demo.ipynb).
 
 
 **Available Scorers:**
 
-*   Discrete Semantic Entropy ([Farquhar et al., 2024](https://www.nature.com/articles/s41586-024-07421-0); [Bouchard & Chauhan, 2025](https://arxiv.org/abs/2504.19254))
-*   Number of Semantic Sets ([Lin et al., 2024](https://arxiv.org/abs/2305.19187); [Vashurin et al., 2025](https://arxiv.org/abs/2406.15627); [Kuhn et al., 2023](https://arxiv.org/pdf/2302.09664))
-*   Non-Contradiction Probability ([Chen & Mueller, 2023](https://arxiv.org/abs/2308.16175); [Lin et al., 2024](https://arxiv.org/abs/2305.19187); [Manakul et al., 2023](https://arxiv.org/abs/2303.08896))
-*   Entailment Probability ([Chen & Mueller, 2023](https://arxiv.org/abs/2308.16175); [Lin et al., 2024](https://arxiv.org/abs/2305.19187); [Manakul et al., 2023](https://arxiv.org/abs/2303.08896))
-*   Exact Match ([Cole et al., 2023](https://arxiv.org/abs/2305.14613); [Chen & Mueller, 2023](https://arxiv.org/abs/2308.16175))
-*   BERTScore ([Manakul et al., 2023](https://arxiv.org/abs/2303.08896); [Zheng et al., 2020](https://arxiv.org/abs/1904.09675))
-*   Cosine Similarity ([Shorinwa et al., 2024](https://arxiv.org/abs/2412.05563); [HuggingFace](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2))
+*   LUQ scorers ([Zhang et al., 2024](https://arxiv.org/abs/2403.20279); [Zhang et al., 2025](https://arxiv.org/abs/2410.13246))
+*   Graph-based scorers ([Jiang et al., 2024](https://arxiv.org/abs/2410.20783))
+*   Generalized long-form semantic entropy ([Farquhar et al., 2024](https://www.nature.com/articles/s41586-024-07421-0))
 
 ## Documentation
 Check out our [documentation site](https://cvs-health.github.io/uqlm/latest/index.html) for detailed instructions on using this package, including API reference and more.
