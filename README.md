@@ -25,7 +25,7 @@ pip install uqlm
 ```
 
 ## Hallucination Detection
-UQLM provides a suite of response-level scorers for quantifying the uncertainty of Large Language Model (LLM) outputs. Each scorer returns a confidence score between 0 and 1, where higher scores indicate a lower likelihood of errors or hallucinations.  We categorize these scorers into four main types:
+UQLM provides a suite of response-level scorers for quantifying the uncertainty of Large Language Model (LLM) outputs. Each scorer returns a confidence score between 0 and 1, where higher scores indicate a lower likelihood of errors or hallucinations.  We categorize these scorers into different types:
 
 
 
@@ -276,7 +276,7 @@ results_df
 # }
 ```
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cvs-health/uqlm/update_notebooks/assets/images/long_text_output.png" />
+  <img src="https://raw.githubusercontent.com/cvs-health/uqlm/develop/assets/images/long_text_output.png" />
 </p>
 
 Above `response` and `entailment` reflect the original response and response-level confidence score, while `refined_response` and `refined_entailment` are the corresponding values after response refinement. The `claims_data` column includes granular data for each response, including claims, claim-level confidence scores, and whether each claim is retained in the response refinement process. We use `ChatOpenAI` in this example, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used. For a more detailed demo, refer to our [Long-Text UQ Demo](./examples/long_text_uq_demo.ipynb).

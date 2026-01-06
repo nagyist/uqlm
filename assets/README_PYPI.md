@@ -21,7 +21,7 @@ pip install uqlm
 ```
 
 ## Hallucination Detection
-UQLM provides a suite of response-level scorers for quantifying the uncertainty of Large Language Model (LLM) outputs. Each scorer returns a confidence score between 0 and 1, where higher scores indicate a lower likelihood of errors or hallucinations.  We categorize these scorers into four main types:
+UQLM provides a suite of response-level scorers for quantifying the uncertainty of Large Language Model (LLM) outputs. Each scorer returns a confidence score between 0 and 1, where higher scores indicate a lower likelihood of errors or hallucinations.  We categorize these scorers into different types:
 
 
 
@@ -31,6 +31,8 @@ UQLM provides a suite of response-level scorers for quantifying the uncertainty 
 | [White-Box Scorers](#white-box-scorers-token-probability-based)      | ⚡ Minimal\* (token probabilities already returned)   | ✔️ None\* (no extra LLM calls)             | 🔒 Limited (requires access to token probabilities)       | ✅ Off-the-shelf            |
 | [LLM-as-a-Judge Scorers](#llm-as-a-judge-scorers) | ⏳ Low-Medium (additional judge calls add latency)    | 💵 Low-High (depends on number of judges)| 🌍 Universal (any LLM can serve as judge)                     |✅  Off-the-shelf        |
 | [Ensemble Scorers](#ensemble-scorers)       | 🔀 Flexible (combines various scorers)       | 🔀 Flexible (combines various scorers)      | 🔀 Flexible (combines various scorers)                    | ✅  Off-the-shelf (beginner-friendly); 🛠️ Can be tuned (best for advanced users)    |
+| [Long-Text Scorers](#long-text-scorers-claim-level)        | ⏱️ High-Very high (multiple generations & claim-level comparisons)       | 💸 High (multiple LLM calls)      | 🌍 Universal               | ✅ Off-the-shelf    |
+
 
 <sup><sup> \*Does not apply to multi-generation white-box scorers, which have higher cost and latency. </sup></sup>
 
@@ -207,22 +209,76 @@ As with the other examples, any [LangChain Chat Model](https://js.langchain.com/
 *   BS Detector ([Chen & Mueller, 2023](https://arxiv.org/abs/2308.16175))
 *   Generalized UQ Ensemble ([Bouchard & Chauhan, 2025](https://arxiv.org/abs/2504.19254))
 
+### Long-Text Scorers (Claim-Level)
+
+These scorers take a fine-grained approach and score confidence/uncertainty at the claim or sentence level. An extension of [black-box scorers](#black-box-scorers-consistency-based), long-text scorers sample multiple responses to the same prompt, decompose the original response into claims or sentences, and evaluate consistency of each original claim/sentence with the sampled responses.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cvs-health/uqlm/develop/assets/images/luq_example.png" />
+</p>
+
+
+After scoring claims in the response, the response can be refined by removing claims with confidence scores less than a specified threshold and reconstructing the response from the retained claims. This approach allows for improved factual precision of long-text generations. 
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cvs-health/uqlm/develop/assets/images/uad_graphic.png" />
+</p>
+
+**Example Usage:**
+Below is a sample of code illustrating how to use the `LongTextUQ` class to conduct claim-level hallucination detection and uncertainty-aware response refinement.
+
+```python
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+from uqlm import LongTextUQ
+luq = LongTextUQ(llm=llm, scorers=["entailment"], response_refinement=True)
+
+results = await luq.generate_and_score(prompts=prompts, num_responses=5)
+results_df = results.to_df()
+results_df
+
+# Preview the data for a specific claim in the first response
+# results_df["claims_data"][0][0]
+# Output:
+# {
+#   'claim': 'Suthida Bajrasudhabimalalakshana was born on June 3, 1978.',
+#   'removed': False,
+#   'entailment': 0.9548099517822266
+# }
+```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/cvs-health/uqlm/develop/assets/images/long_text_output.png" />
+</p>
+
+Above `response` and `entailment` reflect the original response and response-level confidence score, while `refined_response` and `refined_entailment` are the corresponding values after response refinement. The `claims_data` column includes granular data for each response, including claims, claim-level confidence scores, and whether each claim is retained in the response refinement process. We use `ChatOpenAI` in this example, any [LangChain Chat Model](https://js.langchain.com/docs/integrations/chat/) may be used. For a more detailed demo, refer to our [Long-Text UQ Demo](./examples/long_text_uq_demo.ipynb).
+
+
+**Available Scorers:**
+
+*   LUQ scorers ([Zhang et al., 2024](https://arxiv.org/abs/2403.20279); [Zhang et al., 2025](https://arxiv.org/abs/2410.13246))
+*   Graph-based scorers ([Jiang et al., 2024](https://arxiv.org/abs/2410.20783))
+*   Generalized long-form semantic entropy ([Farquhar et al., 2024](https://www.nature.com/articles/s41586-024-07421-0))
+
 ## Documentation
 Check out our [documentation site](https://cvs-health.github.io/uqlm/latest/index.html) for detailed instructions on using this package, including API reference and more.
 
-## Example notebooks
-UQLM offers a broad collection of tutorial notebooks to demonstrate usage of the various scorers. These notebooks aim to have versatile coverage of various LLMs and datasets, but you can easily replace them with your LLM and dataset of choice. Below is a list of these tutorials:
+## Example notebooks and tutorials
 
-- [Black-Box Uncertainty Quantification](https://github.com/cvs-health/uqlm/blob/main/examples/black_box_demo.ipynb): A notebook demonstrating hallucination detection with black-box (consistency) scorers.
-- [White-Box Uncertainty Quantification (Single-Generation)](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_single_generation_demo.ipynb): A notebook demonstrating hallucination detection with white-box (token probability-based) scorers requiring only a single generation per response (fastest and cheapest).
-- [White-Box Uncertainty Quantification (Multi-Generation)](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_multi_generation_demo.ipynb): A notebook demonstrating hallucination detection with white-box (token probability-based) scorers requiring multiple generations per response (slower and more expensive, but higher performance).
-- [LLM-as-a-Judge](https://github.com/cvs-health/uqlm/blob/main/examples/judges_demo.ipynb): A notebook demonstrating hallucination detection with LLM-as-a-Judge.
-- [Tunable UQ Ensemble](https://github.com/cvs-health/uqlm/blob/main/examples/ensemble_tuning_demo.ipynb): A notebook demonstrating hallucination detection with a tunable ensemble of UQ scorers ([Bouchard & Chauhan, 2025](https://arxiv.org/abs/2504.19254)).
-- [Off-the-Shelf UQ Ensemble](https://github.com/cvs-health/uqlm/blob/main/examples/ensemble_off_the_shelf_demo.ipynb): A notebook demonstrating hallucination detection using BS Detector ([Chen & Mueller, 2023](https://arxiv.org/abs/2308.16175)) off-the-shelf ensemble.
-- [Semantic Entropy](https://github.com/cvs-health/uqlm/blob/main/examples/semantic_entropy_demo.ipynb): A notebook demonstrating token-probability-based semantic entropy ([Farquhar et al., 2024](https://www.nature.com/articles/s41586-024-07421-0); [Kuhn et al., 2023](https://arxiv.org/abs/2302.09664)), a state-of-the-art multi-generation white-box scorer.
-- [Semantic Density](https://github.com/cvs-health/uqlm/blob/main/examples/semantic_density_demo.ipynb): A notebook demonstrating semantic density Semantic Density ([Qiu et al., 2024](https://arxiv.org/abs/2405.13845))), a state-of-the-art multi-generation white-box scorer.
-- [Multimodal Uncertainty Quantification](https://github.com/cvs-health/uqlm/blob/main/examples/multimodal_demo.ipynb): A notebook demonstrating UQLM's scoring approach with multimodal inputs (compatible with black-box UQ and white-box UQ).
-- [Score Calibration](https://github.com/cvs-health/uqlm/blob/main/examples/score_calibration_demo.ipynb): A notebook illustrating transformation of confidence scores into calibrated probabilities that better reflect the true likelihood of correctness.
+UQLM comes with a comprehensive set of example notebooks to help you get started with different uncertainty quantification approaches. These examples demonstrate how to use UQLM for various tasks, from basic hallucination detection to advanced ensemble methods.
+
+**[Browse all example notebooks →](https://github.com/cvs-health/uqlm/blob/main/examples/)**
+
+The examples directory contains tutorials for:
+- Black-box and white-box uncertainty quantification
+- Single and multi-generation approaches
+- LLM-as-a-judge techniques
+- Ensemble methods
+- State-of-the-art techniques like Semantic Entropy and Semantic Density
+- Multimodal uncertainty quantification
+- Score calibration
+
+Each notebook includes detailed explanations and code samples that you can adapt to your specific use case.
 
 ## Citation
 A technical description of the `uqlm` scorers and extensive experimental results are presented in **[this paper](https://arxiv.org/abs/2504.19254)**. If you use our framework or toolkit, please cite:
