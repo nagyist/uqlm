@@ -54,7 +54,7 @@ class LLMGrader:
         max_calls_per_min : int, default=None
             Specifies how many api calls to make per minute to avoid a rate limit error. By default, no
             limit is specified.
-        
+
         """
         llm.logprobs = True
         self.response_generator = ResponseGenerator(llm, max_calls_per_min=max_calls_per_min)
@@ -66,13 +66,13 @@ class LLMGrader:
         ----------
         prompts : list of str
             A list of input prompts for the model.
-            
+
         responses : list of str
             A list of model responses for the prompts.
 
         answers : list of str
             A list of ideal (correct) responses
-            
+
         progress_bar : rich.progress.Progress, default=None
             If provided, displays a progress bar while scoring responses
         """
