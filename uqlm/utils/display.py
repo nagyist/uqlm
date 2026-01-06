@@ -20,7 +20,6 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.align import Align
 from rich.rule import Rule
-from rich.markdown import Markdown
 
 
 HEADERS = ["🤖 Generation", "📈 Scoring", "⚙️ Optimization", "🤖🧮 Generation with Logprobs", "", "  - [black]Grading responses against provided ground truth answers with default grader...", "✂️ Decomposition", "✅️ Refinement", "\n🤖 Claim-QA Answer Generation"]
