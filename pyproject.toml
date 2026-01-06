@@ -97,6 +97,7 @@ pytest-rerunfailures = "^16.0"
 
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 reruns = 3
 reruns_delay = 2.0
 markers = [
