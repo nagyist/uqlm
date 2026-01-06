@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from typing import Any, Dict, List
 from rich.progress import SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 from rich.console import Console
 from rich.panel import Panel
@@ -56,7 +57,7 @@ class ConditionalSpinnerColumn(SpinnerColumn):
         return super().render(task)
     
     
-def display_response_refinement(original_text, claims_to_remove, refined_text):
+def display_response_refinement(original_text: str, claims_data: List[Dict[str, Any]], refined_text: str) -> None:
     """
     Display a formatted comparison between original and refined text with highlighted removed claims.
 
@@ -96,6 +97,7 @@ def display_response_refinement(original_text, claims_to_remove, refined_text):
     ))
 
     # Format claims as a bulleted list in a single Text object
+    claims_to_remove = [claims_data[i]['claim'] for i in range(len(claims_data)) if claims_data[i]["removed"]]
     claims_text = Text()
     for i, claim in enumerate(claims_to_remove):
         if i > 0:
