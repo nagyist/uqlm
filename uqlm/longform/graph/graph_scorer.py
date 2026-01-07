@@ -166,7 +166,7 @@ class GraphScorer(ClaimScorer):
 
             for claim_idx, claim in enumerate(master_claim_set):
                 for response_idx, response in enumerate(responses):
-                    entailment_probability = self.nli.predict(hypothesis=claim, premise=response)[:, -1]
+                    entailment_probability = self.nli.predict(hypothesis=claim, premise=response)[:, -1][0]
                     biadjacency_matrix[claim_idx, response_idx] = entailment_probability
 
             biadjacency_matrices.append(biadjacency_matrix)
