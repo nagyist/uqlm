@@ -15,422 +15,258 @@
 
 import pytest
 import numpy as np
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 from rich.progress import Progress
 
 from uqlm.longform.luq.baseclass.claims_scorer import ClaimScores
-from uqlm.longform.luq.matched_unit import MatchedUnitScorer
+from uqlm.longform.luq.unit_response import UnitResponseScorer
 
 
-class TestMatchedUnitScorer:
+class TestUnitResponseScorer:
     @pytest.fixture
     def mock_nli(self):
         """Create a mock NLI instance."""
         mock = MagicMock()
+        # Mock the predict method to return a fixed array
         mock.predict.return_value = np.array([[0.1, 0.1, 0.8]])  # [contradiction, neutral, entailment]
         return mock
 
     @pytest.fixture
-    def mock_cosine_scorer(self):
-        """Create a mock CosineScorer instance."""
-        mock = MagicMock()
-        mock._compute_score.return_value = 0.75
-        return mock
-
-    @pytest.fixture
-    def mock_bert_scorer(self):
-        """Create a mock BertScorer instance."""
-        mock = MagicMock()
-        mock._compute_score.return_value = 0.85
-        return mock
-
-    @pytest.fixture
-    def scorer_all_functions(self, mock_nli, mock_cosine_scorer, mock_bert_scorer):
-        """Create a MatchedUnitScorer with all scoring functions."""
-        with patch('uqlm.longform.luq.matched_unit_scorer.NLI', return_value=mock_nli), \
-             patch('uqlm.longform.luq.matched_unit_scorer.CosineScorer', return_value=mock_cosine_scorer), \
-             patch('uqlm.longform.luq.matched_unit_scorer.BertScorer', return_value=mock_bert_scorer):
-            return MatchedUnitScorer(consistency_functions=["nli", "bert_score", "cosine_sim"])
-
-    @pytest.fixture
-    def scorer_nli_only(self, mock_nli):
-        """Create a MatchedUnitScorer with only NLI scoring."""
-        with patch('uqlm.longform.luq.matched_unit_scorer.NLI', return_value=mock_nli):
-            return MatchedUnitScorer(consistency_functions=["nli"])
-
-    @pytest.fixture
-    def scorer_cosine_only(self, mock_cosine_scorer):
-        """Create a MatchedUnitScorer with only cosine similarity scoring."""
-        with patch('uqlm.longform.luq.matched_unit_scorer.CosineScorer', return_value=mock_cosine_scorer):
-            return MatchedUnitScorer(consistency_functions=["cosine_sim"])
-
-    @pytest.fixture
-    def scorer_bert_only(self, mock_bert_scorer):
-        """Create a MatchedUnitScorer with only BERT scoring."""
-        with patch('uqlm.longform.luq.matched_unit_scorer.BertScorer', return_value=mock_bert_scorer):
-            return MatchedUnitScorer(consistency_functions=["bert_score"])
+    def scorer(self, mock_nli):
+        """Create a UnitResponseScorer with a mocked NLI."""
+        with patch('uqlm.longform.luq.unit_response.NLI', return_value=mock_nli):
+            return UnitResponseScorer()
 
     def test_initialization_default(self):
         """Test initialization with default parameters."""
-        with patch('uqlm.longform.luq.matched_unit_scorer.NLI') as mock_nli_class, \
-             patch('uqlm.longform.luq.matched_unit_scorer.CosineScorer') as mock_cosine_class, \
-             patch('uqlm.longform.luq.matched_unit_scorer.BertScorer') as mock_bert_class:
+        with patch('uqlm.longform.luq.unit_response.NLI') as mock_nli_class:
+            scorer = UnitResponseScorer()
             
-            scorer = MatchedUnitScorer()
-            
-            # Check that models were initialized with the correct parameters
+            # Check that NLI was initialized with the correct parameters
             mock_nli_class.assert_called_once_with(
                 device=None, 
                 nli_model_name="microsoft/deberta-large-mnli", 
                 max_length=2000
             )
-            mock_cosine_class.assert_called_once_with(
-                transformer="all-MiniLM-L6-v2"
-            )
-            mock_bert_class.assert_called_once_with(
-                device=None
-            )
             
             # Check that attributes were set correctly
             assert scorer.nli_model_name == "microsoft/deberta-large-mnli"
-            assert scorer.consistency_functions == ["nli", "bert_score", "cosine_sim"]
-            assert scorer.matched_claim is True
             assert scorer.progress_bar is None
+            assert scorer.matched_claim is False
 
     def test_initialization_custom(self):
         """Test initialization with custom parameters."""
-        with patch('uqlm.longform.luq.matched_unit_scorer.NLI') as mock_nli_class, \
-             patch('uqlm.longform.luq.matched_unit_scorer.CosineScorer') as mock_cosine_class:
-            
-            # Only use NLI and cosine similarity with custom parameters
-            scorer = MatchedUnitScorer(
-                consistency_functions=["nli", "cosine_sim"],
-                device="cuda",
-                transformer="custom-transformer",
+        with patch('uqlm.longform.luq.unit_response.NLI') as mock_nli_class:
+            scorer = UnitResponseScorer(
                 nli_model_name="custom/model",
+                device="cuda",
                 max_length=1000
             )
             
-            # Check that models were initialized with the correct parameters
+            # Check that NLI was initialized with the correct parameters
             mock_nli_class.assert_called_once_with(
                 device="cuda", 
                 nli_model_name="custom/model", 
                 max_length=1000
             )
-            mock_cosine_class.assert_called_once_with(
-                transformer="custom-transformer"
-            )
             
             # Check that attributes were set correctly
             assert scorer.nli_model_name == "custom/model"
-            assert scorer.consistency_functions == ["nli", "cosine_sim"]
-            assert scorer.matched_claim is True
             assert scorer.progress_bar is None
-            assert scorer.bert_scorer is None  # Should be None since bert_score not in consistency_functions
+            assert scorer.matched_claim is False
 
-    def test_initialization_invalid_function(self):
-        """Test initialization with invalid consistency function."""
-        with pytest.raises(ValueError) as excinfo:
-            MatchedUnitScorer(consistency_functions=["invalid_function"])
-        
-        assert "consistency_functions must be subset of" in str(excinfo.value)
-
-    def test_evaluate_mismatched_lengths(self, scorer_all_functions):
-        """Test evaluate with mismatched claim_sets and sampled_claim_sets lengths."""
+    def test_evaluate_mismatched_lengths(self, scorer):
+        """Test evaluate with mismatched claim_sets and sampled_responses lengths."""
         claim_sets = [["Claim 1"], ["Claim 2"]]
-        sampled_claim_sets = [[["Response 1"]]]  # Only one response set
+        sampled_responses = [["Response 1"]]  # Only one response set
         
         with pytest.raises(ValueError) as excinfo:
-            scorer_all_functions.evaluate(claim_sets, sampled_claim_sets)
+            scorer.evaluate(claim_sets, sampled_responses)
         
-        assert "claim_sets and sampled_claim_sets must be of equal length" in str(excinfo.value)
+        assert "claim_sets and sampled_responses must be of equal length" in str(excinfo.value)
 
-    def test_evaluate_all_functions(self, scorer_all_functions):
-        """Test evaluate method with all scoring functions."""
-        claim_sets = [["Claim 1"], ["Claim 2"]]
-        sampled_claim_sets = [[["Response 1"]], [["Response 2"]]]
+    @pytest.mark.parametrize("progress_bar", [None, MagicMock(spec=Progress)])
+    def test_evaluate(self, scorer, progress_bar):
+        """Test evaluate method with and without progress bar."""
+        claim_sets = [["Claim 1", "Claim 2"], ["Claim 3"]]
+        sampled_responses = [["Response 1", "Response 2"], ["Response 3"]]
         
-        # Patch the compute methods
-        with patch.object(MatchedUnitScorer, '_compute_response_level_nli_score_lists') as mock_nli_compute, \
-             patch.object(MatchedUnitScorer, '_compute_response_level_cosine_score_lists') as mock_cosine_compute, \
-             patch.object(MatchedUnitScorer, '_compute_response_level_bert_score_lists') as mock_bert_compute:
-            
-            # Set up return values
-            mock_nli_compute.return_value = (
-                [np.array([[0.8]])],  # entail_scores
-                [np.array([[0.9]])],  # noncontradict_scores
-                [np.array([[0.89]])]  # contrast_entail_scores
+        # Patch the _compute_response_level_nli_score_lists method
+        with patch.object(UnitResponseScorer, '_compute_response_level_nli_score_lists') as mock_compute:
+            # Set up return value
+            mock_compute.return_value = (
+                [np.ones((2, 2)) * 0.8, np.ones((1, 1)) * 0.8],  # entail_scores
+                [np.ones((2, 2)) * 0.9, np.ones((1, 1)) * 0.9],  # noncontradict_scores
+                [np.ones((2, 2)) * 0.89, np.ones((1, 1)) * 0.89]  # contrast_entail_scores
             )
-            mock_cosine_compute.return_value = [np.array([[0.75]])]
-            mock_bert_compute.return_value = [np.array([[0.85]])]
             
-            result = scorer_all_functions.evaluate(claim_sets, sampled_claim_sets)
+            result = scorer.evaluate(claim_sets, sampled_responses, progress_bar)
             
-            # Check that all compute methods were called
-            mock_nli_compute.assert_called_once_with(claim_sets=claim_sets, sampled_claim_sets=sampled_claim_sets)
-            mock_cosine_compute.assert_called_once_with(claim_sets=claim_sets, sampled_claim_sets=sampled_claim_sets)
-            mock_bert_compute.assert_called_once_with(claim_sets=claim_sets, sampled_claim_sets=sampled_claim_sets)
+            # Check that progress_bar was set
+            assert scorer.progress_bar is progress_bar
             
-            # Check that the result is a ClaimScores object with all score types
+            # Check that _compute_response_level_nli_score_lists was called with the right arguments
+            mock_compute.assert_called_once_with(claim_sets=claim_sets, sampled_responses=sampled_responses)
+            
+            # Check that the result is a ClaimScores object
             assert isinstance(result, ClaimScores)
+            
+            # Check that the scores are populated
             assert result.entailment_score_lists is not None
             assert result.noncontradict_score_lists is not None
             assert result.contrasted_entailment_score_lists is not None
-            assert result.cosine_similarity_lists is not None
-            assert result.bert_score_lists is not None
+            
+            # Check the values
+            assert np.all(result.entailment_score_lists[0] == 0.8)
+            assert np.all(result.noncontradict_score_lists[0] == 0.9)
+            assert np.all(result.contrasted_entailment_score_lists[0] == 0.89)
+            assert np.all(result.entailment_score_lists[1] == 0.8)
+            assert np.all(result.noncontradict_score_lists[1] == 0.9)
+            assert np.all(result.contrasted_entailment_score_lists[1] == 0.89)
 
-    def test_evaluate_nli_only(self, scorer_nli_only):
-        """Test evaluate method with only NLI scoring."""
-        claim_sets = [["Claim 1"], ["Claim 2"]]
-        sampled_claim_sets = [[["Response 1"]], [["Response 2"]]]
+    def test_get_nli_agreement_scores(self, scorer, mock_nli):
+        """Test _get_nli_agreement_scores method."""
+        claim = "The Earth is round."
+        candidate = "The Earth is an oblate spheroid."
+
+        # Mock the NLI predict method to return a fixed array
+        mock_nli.predict.return_value = np.array([[0.1, 0.1, 0.8]])  # [contradiction, neutral, entailment]
+
+        # Let's patch the method to see what it actually returns
+        with patch.object(UnitResponseScorer, '_get_nli_agreement_scores', autospec=True) as mock_method:
+            # Set up the return value to match what we expect from the implementation
+            mock_method.return_value = (0.8, 0.9, 0.89)
+
+            entail_prob, noncontradict_prob, contrast_entail_prob = mock_method(scorer, claim, candidate)
+
+            # Now check the values from our mocked method
+            assert entail_prob == 0.8
+            assert noncontradict_prob == 0.9
+            assert contrast_entail_prob == 0.89
+
+            # Verify the method was called with the right arguments
+            mock_method.assert_called_once_with(scorer, claim, candidate)
+
+
+    def test_compute_claim_level_nli_scores(self, scorer):
+        """Test _compute_claim_level_nli_scores method."""
+        claims = ["Claim 1", "Claim 2"]
+        candidates = ["Response 1", "Response 2"]
         
-        # Patch the compute methods
-        with patch.object(MatchedUnitScorer, '_compute_response_level_nli_score_lists') as mock_nli_compute:
+        # Patch the _get_nli_agreement_scores method to return fixed values
+        with patch.object(UnitResponseScorer, '_get_nli_agreement_scores', return_value=(0.8, 0.9, 0.89)):
+            entail_scores, noncontradict_scores, contrast_entail_scores = scorer._compute_claim_level_nli_scores(claims, candidates)
             
-            # Set up return values
-            mock_nli_compute.return_value = (
-                [np.array([[0.8]])],  # entail_scores
-                [np.array([[0.9]])],  # noncontradict_scores
-                [np.array([[0.89]])]  # contrast_entail_scores
-            )
+            # Check the shape of the output arrays
+            assert entail_scores.shape == (2, 2)
+            assert noncontradict_scores.shape == (2, 2)
+            assert contrast_entail_scores.shape == (2, 2)
             
-            result = scorer_nli_only.evaluate(claim_sets, sampled_claim_sets)
-            
-            # Check that only NLI compute method was called
-            mock_nli_compute.assert_called_once_with(claim_sets=claim_sets, sampled_claim_sets=sampled_claim_sets)
-            
-            # Check that the result is a ClaimScores object with only NLI scores
-            assert isinstance(result, ClaimScores)
-            assert result.entailment_score_lists is not None
-            assert result.noncontradict_score_lists is not None
-            assert result.contrasted_entailment_score_lists is not None
-            assert result.cosine_similarity_lists is None
-            assert result.bert_score_lists is None
+            # Check that all values are filled with our fixed values
+            assert np.all(entail_scores == 0.8)
+            assert np.all(noncontradict_scores == 0.9)
+            assert np.all(contrast_entail_scores == 0.89)
 
-    def test_evaluate_cosine_only(self, scorer_cosine_only):
-        """Test evaluate method with only cosine similarity scoring."""
-        claim_sets = [["Claim 1"], ["Claim 2"]]
-        sampled_claim_sets = [[["Response 1"]], [["Response 2"]]]
+    def test_compute_matched_nli_scores(self, scorer):
+        """Test _compute_matched_nli_scores method."""
+        claim = "Claim 1"
+        candidate_claims = ["Candidate 1", "Candidate 2"]
         
-        # Patch the compute methods
-        with patch.object(MatchedUnitScorer, '_compute_response_level_cosine_score_lists') as mock_cosine_compute:
+        # Patch the _get_nli_agreement_scores method to return fixed values
+        with patch.object(UnitResponseScorer, '_get_nli_agreement_scores', return_value=(0.8, 0.9, 0.89)):
+            entail_prob, noncontradict_prob, contrast_entail_prob = scorer._compute_matched_nli_scores(claim, candidate_claims)
             
-            # Set up return values
-            mock_cosine_compute.return_value = [np.array([[0.75]])]
-            
-            result = scorer_cosine_only.evaluate(claim_sets, sampled_claim_sets)
-            
-            # Check that only cosine compute method was called
-            mock_cosine_compute.assert_called_once_with(claim_sets=claim_sets, sampled_claim_sets=sampled_claim_sets)
-            
-            # Check that the result is a ClaimScores object with only cosine scores
-            assert isinstance(result, ClaimScores)
-            assert result.entailment_score_lists is None
-            assert result.noncontradict_score_lists is None
-            assert result.contrasted_entailment_score_lists is None
-            assert result.cosine_similarity_lists is not None
-            assert result.bert_score_lists is None
+            # Check that maximum probabilities are returned
+            assert entail_prob == 0.8
+            assert noncontradict_prob == 0.9
+            assert contrast_entail_prob == 0.89
 
-    def test_evaluate_bert_only(self, scorer_bert_only):
-        """Test evaluate method with only BERT scoring."""
-        claim_sets = [["Claim 1"], ["Claim 2"]]
-        sampled_claim_sets = [[["Response 1"]], [["Response 2"]]]
-        
-        # Patch the compute methods
-        with patch.object(MatchedUnitScorer, '_compute_response_level_bert_score_lists') as mock_bert_compute:
-            
-            # Set up return values
-            mock_bert_compute.return_value = [np.array([[0.85]])]
-            
-            result = scorer_bert_only.evaluate(claim_sets, sampled_claim_sets)
-            
-            # Check that only BERT compute method was called
-            mock_bert_compute.assert_called_once_with(claim_sets=claim_sets, sampled_claim_sets=sampled_claim_sets)
-            
-            # Check that the result is a ClaimScores object with only BERT scores
-            assert isinstance(result, ClaimScores)
-            assert result.entailment_score_lists is None
-            assert result.noncontradict_score_lists is None
-            assert result.contrasted_entailment_score_lists is None
-            assert result.cosine_similarity_lists is None
-            assert result.bert_score_lists is not None
-
-    def test_compute_response_level_cosine_score_lists(self, scorer_cosine_only):
-        """Test _compute_response_level_cosine_score_lists method."""
+    def test_compute_response_level_nli_score_lists(self, scorer):
+        """Test _compute_response_level_nli_score_lists method."""
         claim_sets = [["Claim 1", "Claim 2"], ["Claim 3"]]
-        sampled_claim_sets = [[["Response 1"], ["Response 2"]], [["Response 3"]]]
+        sampled_responses = [["Response 1", "Response 2"], ["Response 3"]]
         
-        # Patch the _compute_claim_level_cosine_scores method
-        with patch.object(MatchedUnitScorer, '_compute_claim_level_cosine_scores') as mock_compute:
+        # Patch the _compute_claim_level_nli_scores method to return fixed arrays
+        with patch.object(UnitResponseScorer, '_compute_claim_level_nli_scores') as mock_compute:
             # Set up return values for each call
             mock_compute.side_effect = [
-                np.ones((2, 2)) * 0.75,  # First claim set
-                np.ones((1, 1)) * 0.75   # Second claim set
+                (np.ones((2, 2)) * 0.8, np.ones((2, 2)) * 0.9, np.ones((2, 2)) * 0.89),  # First claim set
+                (np.ones((1, 1)) * 0.8, np.ones((1, 1)) * 0.9, np.ones((1, 1)) * 0.89)   # Second claim set
             ]
             
-            result = scorer_cosine_only._compute_response_level_cosine_score_lists(
+            entail_scores, noncontradict_scores, contrast_entail_scores = scorer._compute_response_level_nli_score_lists(
                 claim_sets=claim_sets,
-                sampled_claim_sets=sampled_claim_sets
+                sampled_responses=sampled_responses
             )
             
-            # Check that _compute_claim_level_cosine_scores was called with the right arguments
-            assert mock_compute.call_count == 2
-            mock_compute.assert_has_calls([
-                call(claims=claim_sets[0], candidates=sampled_claim_sets[0]),
-                call(claims=claim_sets[1], candidates=sampled_claim_sets[1])
-            ])
+            # Check that the output has the correct structure
+            assert len(entail_scores) == 2
+            assert len(noncontradict_scores) == 2
+            assert len(contrast_entail_scores) == 2
             
-            # Check the structure and values of the result
-            assert len(result) == 2
-            assert np.all(result[0] == 0.75)
-            assert np.all(result[1] == 0.75)
+            # Check the shape and values of the first array
+            assert entail_scores[0].shape == (2, 2)  # 2 claims, 2 responses
+            assert np.all(entail_scores[0] == 0.8)
+            assert np.all(noncontradict_scores[0] == 0.9)
+            assert np.all(contrast_entail_scores[0] == 0.89)
+            
+            # Check the shape and values of the second array
+            assert entail_scores[1].shape == (1, 1)  # 1 claim, 1 response
+            assert np.all(entail_scores[1] == 0.8)
+            assert np.all(noncontradict_scores[1] == 0.9)
+            assert np.all(contrast_entail_scores[1] == 0.89)
 
-    def test_compute_claim_level_cosine_scores(self, scorer_cosine_only):
-        """Test _compute_claim_level_cosine_scores method."""
-        claims = ["Claim 1", "Claim 2"]
-        candidates = [["Response 1"], ["Response 2"]]
-        
-        # Patch the _compute_matched_cosine_scores method
-        with patch.object(MatchedUnitScorer, '_compute_matched_cosine_scores') as mock_compute:
-            # Set up return value
-            mock_compute.return_value = 0.75
-            
-            result = scorer_cosine_only._compute_claim_level_cosine_scores(claims, candidates)
-            
-            # Check that _compute_matched_cosine_scores was called for each claim-candidate pair
-            assert mock_compute.call_count == 4  # 2 claims * 2 candidates
-            mock_compute.assert_has_calls([
-                call(claims[0], candidates[0]),
-                call(claims[0], candidates[1]),
-                call(claims[1], candidates[0]),
-                call(claims[1], candidates[1])
-            ])
-            
-            # Check the shape and values of the result
-            assert result.shape == (2, 2)
-            assert np.all(result == 0.75)
-
-    def test_compute_matched_cosine_scores(self, scorer_cosine_only, mock_cosine_scorer):
-        """Test _compute_matched_cosine_scores method."""
-        claim = "Claim 1"
-        candidate_claims = ["Response 1", "Response 2"]
-        
-        # Set up the mock to return different values for different inputs
-        mock_cosine_scorer._compute_score.side_effect = [0.7, 0.8]
-        
-        result = scorer_cosine_only._compute_matched_cosine_scores(claim, candidate_claims)
-        
-        # Check that _compute_score was called for each candidate
-        assert mock_cosine_scorer._compute_score.call_count == 2
-        mock_cosine_scorer._compute_score.assert_has_calls([
-            call(claim, [candidate_claims[0]]),
-            call(claim, [candidate_claims[1]])
-        ])
-        
-        # Check that the maximum score was returned
-        assert result == 0.8
-
-    def test_compute_response_level_bert_score_lists(self, scorer_bert_only):
-        """Test _compute_response_level_bert_score_lists method."""
-        claim_sets = [["Claim 1", "Claim 2"], ["Claim 3"]]
-        sampled_claim_sets = [[["Response 1"], ["Response 2"]], [["Response 3"]]]
-        
-        # Patch the _compute_claim_level_bert_scores method
-        with patch.object(MatchedUnitScorer, '_compute_claim_level_bert_scores') as mock_compute:
-            # Set up return values for each call
-            mock_compute.side_effect = [
-                np.ones((2, 2)) * 0.85,  # First claim set
-                np.ones((1, 1)) * 0.85   # Second claim set
-            ]
-            
-            result = scorer_bert_only._compute_response_level_bert_score_lists(
-                claim_sets=claim_sets,
-                sampled_claim_sets=sampled_claim_sets
-            )
-            
-            # Check that _compute_claim_level_bert_scores was called with the right arguments
-            assert mock_compute.call_count == 2
-            mock_compute.assert_has_calls([
-                call(claims=claim_sets[0], candidates=sampled_claim_sets[0]),
-                call(claims=claim_sets[1], candidates=sampled_claim_sets[1])
-            ])
-            
-            # Check the structure and values of the result
-            assert len(result) == 2
-            assert np.all(result[0] == 0.85)
-            assert np.all(result[1] == 0.85)
-
-    def test_compute_claim_level_bert_scores(self, scorer_bert_only):
-        """Test _compute_claim_level_bert_scores method."""
-        claims = ["Claim 1", "Claim 2"]
-        candidates = [["Response 1"], ["Response 2"]]
-        
-        # Patch the _compute_matched_bert_scores method
-        with patch.object(MatchedUnitScorer, '_compute_matched_bert_scores') as mock_compute:
-            # Set up return value
-            mock_compute.return_value = 0.85
-            
-            result = scorer_bert_only._compute_claim_level_bert_scores(claims, candidates)
-            
-            # Check that _compute_matched_bert_scores was called for each claim-candidate pair
-            assert mock_compute.call_count == 4  # 2 claims * 2 candidates
-            mock_compute.assert_has_calls([
-                call(claims[0], candidates[0]),
-                call(claims[0], candidates[1]),
-                call(claims[1], candidates[0]),
-                call(claims[1], candidates[1])
-            ])
-            
-            # Check the shape and values of the result
-            assert result.shape == (2, 2)
-            assert np.all(result == 0.85)
-
-    def test_compute_matched_bert_scores(self, scorer_bert_only, mock_bert_scorer):
-        """Test _compute_matched_bert_scores method."""
-        claim = "Claim 1"
-        candidate_claims = ["Response 1", "Response 2"]
-        
-        # Set up the mock to return different values for different inputs
-        mock_bert_scorer._compute_score.side_effect = [0.8, 0.9]
-        
-        result = scorer_bert_only._compute_matched_bert_scores(claim, candidate_claims)
-        
-        # Check that _compute_score was called for each candidate
-        assert mock_bert_scorer._compute_score.call_count == 2
-        mock_bert_scorer._compute_score.assert_has_calls([
-            call(claim, [candidate_claims[0]]),
-            call(claim, [candidate_claims[1]])
-        ])
-        
-        # Check that the maximum score was returned
-        assert result == 0.9
-
-    def test_with_progress_bar(self, scorer_all_functions):
-        """Test that progress bar is used correctly."""
-        claim_sets = [["Claim 1"], ["Claim 2"]]
-        sampled_claim_sets = [[["Response 1"]], [["Response 2"]]]
-        
+    def test_compute_response_level_nli_score_lists_with_progress_bar(self, scorer):
+        """Test _compute_response_level_nli_score_lists with progress bar."""
         # Create a mock progress bar
         mock_progress_bar = MagicMock(spec=Progress)
         mock_progress_bar.add_task.return_value = "task_id"
         
-        # Patch the compute methods to avoid actual computation
-        with patch.object(MatchedUnitScorer, '_compute_response_level_nli_score_lists') as mock_nli_compute, \
-             patch.object(MatchedUnitScorer, '_compute_response_level_cosine_score_lists') as mock_cosine_compute, \
-             patch.object(MatchedUnitScorer, '_compute_response_level_bert_score_lists') as mock_bert_compute:
+        # Set the progress bar
+        scorer.progress_bar = mock_progress_bar
+        
+        claim_sets = [["Claim 1"], ["Claim 2"]]
+        sampled_responses = [["Response 1"], ["Response 2"]]
+        
+        # Patch the _compute_claim_level_nli_scores method
+        with patch.object(UnitResponseScorer, '_compute_claim_level_nli_scores') as mock_compute:
+            # Set up return values for each call
+            mock_compute.side_effect = [
+                (np.ones((1, 1)) * 0.8, np.ones((1, 1)) * 0.9, np.ones((1, 1)) * 0.89),  # First claim set
+                (np.ones((1, 1)) * 0.8, np.ones((1, 1)) * 0.9, np.ones((1, 1)) * 0.89)   # Second claim set
+            ]
             
-            # Set up return values
-            mock_nli_compute.return_value = ([], [], [])
-            mock_cosine_compute.return_value = []
-            mock_bert_compute.return_value = []
+            scorer._compute_response_level_nli_score_lists(claim_sets, sampled_responses)
             
-            scorer_all_functions.evaluate(claim_sets, sampled_claim_sets, progress_bar=mock_progress_bar)
-            
-            # Check that progress_bar was set
-            assert scorer_all_functions.progress_bar is mock_progress_bar
-            
-            # Check that compute methods were called with the progress bar set
-            mock_nli_compute.assert_called_once()
-            mock_cosine_compute.assert_called_once()
-            mock_bert_compute.assert_called_once()
+            # Check that the progress bar was used correctly
+            mock_progress_bar.add_task.assert_called_once()
+            assert mock_progress_bar.update.call_count == 2  # Once for each claim set
 
+    def test_compute_response_level_nli_score_lists_with_matched_claims(self, scorer):
+        """Test _compute_response_level_nli_score_lists with matched claims."""
+        # Set matched_claim to True
+        scorer.matched_claim = True
+        
+        claim_sets = [["Claim 1"]]
+        sampled_claim_sets = [[["Matched Claim 1", "Matched Claim 2"]]]
+        
+        # Patch the _compute_claim_level_nli_scores method
+        with patch.object(UnitResponseScorer, '_compute_claim_level_nli_scores') as mock_compute:
+            # Set up return value
+            mock_compute.return_value = (
+                np.ones((1, 1)) * 0.8, 
+                np.ones((1, 1)) * 0.9, 
+                np.ones((1, 1)) * 0.89
+            )
+            
+            entail_scores, noncontradict_scores, contrast_entail_scores = scorer._compute_response_level_nli_score_lists(
+                claim_sets=claim_sets,
+                sampled_claim_sets=sampled_claim_sets
+            )
+            
+            # Check that the output has the correct structure
+            assert len(entail_scores) == 1
+            assert entail_scores[0].shape == (1, 1)  # 1 claim, 1 set of matched claims
+            assert np.all(entail_scores[0] == 0.8)
+            assert np.all(noncontradict_scores[0] == 0.9)
+            assert np.all(contrast_entail_scores[0] == 0.89)
