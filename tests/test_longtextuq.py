@@ -62,6 +62,7 @@ class TestLongTextUQ:
         with patch('uqlm.scorers.longform.longtext.UnitResponseScorer', return_value=mock_unit_response_scorer):
             return LongTextUQ(
                 llm=mock_llm,
+                device="cpu",
                 mode="unit_response",
                 scorers=["entailment", "noncontradiction", "contrasted_entailment"]
             )
@@ -72,6 +73,7 @@ class TestLongTextUQ:
         with patch('uqlm.scorers.longform.longtext.MatchedUnitScorer', return_value=mock_matched_unit_scorer):
             return LongTextUQ(
                 llm=mock_llm,
+                device="cpu",
                 mode="matched_unit",
                 scorers=["entailment", "noncontradiction", "contrasted_entailment", "bert_score", "cosine_sim"]
             )
@@ -79,12 +81,12 @@ class TestLongTextUQ:
     def test_initialization_default(self, mock_llm):
         """Test initialization with default parameters."""
         with patch('uqlm.scorers.longform.longtext.UnitResponseScorer') as mock_unit_response_class:
-            uq = LongTextUQ(llm=mock_llm)
+            uq = LongTextUQ(llm=mock_llm, device="cpu")
             
             # Check that UnitResponseScorer was initialized with the correct parameters
             mock_unit_response_class.assert_called_once_with(
                 nli_model_name="microsoft/deberta-large-mnli",
-                device=None,
+                device="cpu",
                 max_length=2000
             )
             
@@ -176,21 +178,21 @@ class TestLongTextUQ:
     def test_initialization_invalid_mode(self, mock_llm):
         """Test initialization with invalid mode."""
         with pytest.raises(ValueError) as excinfo:
-            LongTextUQ(llm=mock_llm, mode="invalid_mode")
+            LongTextUQ(llm=mock_llm, mode="invalid_mode", device="cpu")
         
         assert "Invalid mode" in str(excinfo.value)
 
     def test_initialization_invalid_scorers_unit_response(self, mock_llm):
         """Test initialization with invalid scorers for unit_response mode."""
         with pytest.raises(ValueError) as excinfo:
-            LongTextUQ(llm=mock_llm, mode="unit_response", scorers=["entailment", "bert_score"])
+            LongTextUQ(llm=mock_llm, mode="unit_response", scorers=["entailment", "bert_score"], device="cpu")
         
         assert "Invalid scorers" in str(excinfo.value)
 
     def test_initialization_invalid_scorers_matched_unit(self, mock_llm):
         """Test initialization with invalid scorers for matched_unit mode."""
         with pytest.raises(ValueError) as excinfo:
-            LongTextUQ(llm=mock_llm, mode="matched_unit", scorers=["entailment", "invalid_scorer"])
+            LongTextUQ(llm=mock_llm, mode="matched_unit", scorers=["entailment", "invalid_scorer"], device="cpu")
         
         assert "Invalid scorers" in str(excinfo.value)
 
