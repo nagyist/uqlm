@@ -14,9 +14,9 @@
 
 import pytest
 import json
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.shortform.baseclass.uncertainty import ShortFormUQ
 from uqlm.utils.results import UQResult
-from uqlm.judges.judge import LLMJudge
+from uqlm.judges import LLMJudge
 from langchain_openai import AzureChatOpenAI
 
 datafile_path = "tests/data/scorers/bsdetector_results_file.json"
@@ -39,7 +39,7 @@ async def test_uncertainty(monkeypatch):
     def postprocesser(x):
         return x.lower() if isinstance(x, str) else x
 
-    uq_object = UncertaintyQuantifier(llm=mock_object, postprocessor=postprocesser)
+    uq_object = ShortFormUQ(llm=mock_object, postprocessor=postprocesser)
 
     async def mock_generate_responses(prompts, **args):
         return {"logprobs": [None], "responses": MOCKED_RESPONSES}
@@ -70,7 +70,7 @@ async def test_uncertainty(monkeypatch):
 @pytest.mark.asyncio
 async def test_edge_cases(monkeypatch):
     # Test generate_original_responses without postprocessor
-    uq_no_post = UncertaintyQuantifier(llm=mock_object)
+    uq_no_post = ShortFormUQ(llm=mock_object)
     PROMPTS = data["prompts"]
     MOCKED_RESPONSES = data["responses"]
 
@@ -81,7 +81,7 @@ async def test_edge_cases(monkeypatch):
     responses = await uq_no_post.generate_original_responses(prompts=PROMPTS)
     assert responses == MOCKED_RESPONSES  # No postprocessing
     #  Test _construct_judge
-    uq_with_llm = UncertaintyQuantifier(llm=mock_object)
+    uq_with_llm = ShortFormUQ(llm=mock_object)
     # Test case 1: Use self.llm as judge (llm parameter is None - default)
     judge1 = uq_with_llm._construct_judge()
     assert isinstance(judge1, LLMJudge)
@@ -89,7 +89,7 @@ async def test_edge_cases(monkeypatch):
     judge2 = uq_with_llm._construct_judge(llm=mock_object)
     assert isinstance(judge2, LLMJudge)
     #  Test _update_best
-    uq_update = UncertaintyQuantifier(llm=mock_object)
+    uq_update = ShortFormUQ(llm=mock_object)
     uq_update.responses = ["r1", "r1"]
     uq_update.logprobs = [0.11, 0.21]
     uq_update.sampled_responses = [["r2", "s2"], ["r3", "s3"]]
@@ -104,7 +104,7 @@ async def test_edge_cases(monkeypatch):
 @pytest.mark.asyncio
 async def test_generate_responses():
     """Test the _generate_responses ValueError"""
-    uq_no_llm = UncertaintyQuantifier(llm=None)
+    uq_no_llm = ShortFormUQ(llm=None)
     with pytest.raises(ValueError, match="llm must be provided to generate responses"):
         await uq_no_llm._generate_responses(prompts=["test"], count=1)
 
@@ -126,7 +126,7 @@ def test_uq_result():
 async def test_multiple_logprobs_and_temperature(monkeypatch):
     """Test multiple_logprobs.append in generate_candidate_responses and Temperature handling in _generate_responses"""
     # Test multiple_logprobs.append in generate_candidate_responses
-    uq_for_logprobs = UncertaintyQuantifier(llm=mock_object)
+    uq_for_logprobs = ShortFormUQ(llm=mock_object)
     PROMPTS = data["prompts"]
 
     # Mock to return logprobs
@@ -140,7 +140,7 @@ async def test_multiple_logprobs_and_temperature(monkeypatch):
     await uq_for_logprobs.generate_candidate_responses(prompts=PROMPTS)
 
     # Test the temperature handling in _generate_responses
-    uq_temp = UncertaintyQuantifier(llm=mock_object)
+    uq_temp = ShortFormUQ(llm=mock_object)
 
     # Mock the LLM's agenerate method directly
     async def mock_llm_agenerate(*args, **kwargs):
@@ -165,7 +165,7 @@ async def test_multiple_logprobs_and_temperature(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_generate_responses_exception(monkeypatch):
-    uq = UncertaintyQuantifier(llm=mock_object)
+    uq = ShortFormUQ(llm=mock_object)
 
     class MockProgress:
         def stop(self):
@@ -184,7 +184,7 @@ async def test_generate_responses_exception(monkeypatch):
 
 
 def test_update_best_with_raw(monkeypatch):
-    uq = UncertaintyQuantifier(llm=mock_object, postprocessor=lambda x: x)
+    uq = ShortFormUQ(llm=mock_object, postprocessor=lambda x: x)
     uq.responses = ["r1"]
     uq.sampled_responses = [["r2", "r3"]]
     uq.logprobs = [0.1]
@@ -198,7 +198,7 @@ def test_update_best_with_raw(monkeypatch):
 
 
 def test_construct_black_box_return_data_variants():
-    uq = UncertaintyQuantifier(llm=mock_object, postprocessor=lambda x: x)
+    uq = ShortFormUQ(llm=mock_object, postprocessor=lambda x: x)
     uq.responses = ["r1"]
     uq.sampled_responses = [["r2", "r3"]]
     uq.raw_responses = ["raw_r1"]
@@ -219,7 +219,7 @@ def test_construct_black_box_return_data_variants():
 
 
 def test_progress_bar_exceptions(monkeypatch):
-    uq = UncertaintyQuantifier(llm=mock_object)
+    uq = ShortFormUQ(llm=mock_object)
 
     class FaultyProgress:
         def start(self):

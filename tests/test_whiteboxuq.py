@@ -14,7 +14,7 @@
 
 import pytest
 import json
-from uqlm.scorers import WhiteBoxUQ
+from uqlm.scorers.shortform.white_box import WhiteBoxUQ
 from langchain_openai import AzureChatOpenAI
 
 datafile_path = "tests/data/scorers/whitebox_results_file.json"
@@ -33,7 +33,7 @@ mock_object = AzureChatOpenAI(deployment_name="YOUR-DEPLOYMENT", temperature=1.0
 
 @pytest.mark.asyncio
 async def test_whiteboxuq_basic(monkeypatch):
-    wbuq = WhiteBoxUQ(llm=mock_object, scorers=["normalized_probability", "min_probability"])
+    wbuq = WhiteBoxUQ(llm=mock_object, scorers=["sequence_probability", "min_probability"])
 
     async def mock_generate_original_responses(*args, **kwargs):
         wbuq.logprobs = MOCKED_LOGPROBS
@@ -45,7 +45,7 @@ async def test_whiteboxuq_basic(monkeypatch):
         results = await wbuq.generate_and_score(prompts=PROMPTS, show_progress_bars=show_progress_bars)
 
         for i in range(len(PROMPTS)):
-            assert results.data["normalized_probability"][i] == pytest.approx(data["normalized_probability"][i])
+            assert results.data["sequence_probability"][i] == pytest.approx(data["normalized_probability"][i])
             assert results.data["min_probability"][i] == pytest.approx(data["min_probability"][i])
 
         assert results.metadata == metadata

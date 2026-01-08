@@ -17,13 +17,13 @@ from typing import Any, List, Optional, Union, Dict
 import warnings
 from langchain_core.messages import BaseMessage
 
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.shortform.baseclass.uncertainty import ShortFormUQ
 from uqlm.utils.results import UQResult
 import time
 from uqlm.nli.cluster import SemanticClusterer
 
 
-class SemanticEntropy(UncertaintyQuantifier):
+class SemanticEntropy(ShortFormUQ):
     def __init__(
         self,
         llm=None,

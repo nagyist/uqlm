@@ -42,11 +42,40 @@ Remember: You must return ONLY the word "yes" or "no" with no additional text. T
 
 class LLMGrader:
     def __init__(self, llm: BaseChatModel, max_calls_per_min: Optional[int] = None) -> None:
+        """
+        Class for grading LLM responses against a provided set of ground-truth (ideal) answers for the given prompts
+
+        Parameters
+        ----------
+        llm : langchain `BaseChatModel`
+            A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
+            relevant parameters to the constructor of their `llm` object.
+
+        max_calls_per_min : int, default=None
+            Specifies how many api calls to make per minute to avoid a rate limit error. By default, no
+            limit is specified.
+
+        """
         llm.logprobs = True
         self.response_generator = ResponseGenerator(llm, max_calls_per_min=max_calls_per_min)
         self.response_generator.response_generator_type = "grader"
 
     async def grade_responses(self, prompts: List[str], responses: List[str], answers: List[str], progress_bar: Optional[Progress] = None) -> List[bool]:
+        """
+        Parameters
+        ----------
+        prompts : list of str
+            A list of input prompts for the model.
+
+        responses : list of str
+            A list of model responses for the prompts.
+
+        answers : list of str
+            A list of ideal (correct) responses
+
+        progress_bar : rich.progress.Progress, default=None
+            If provided, displays a progress bar while scoring responses
+        """
         grader_prompts = [self._construct_grader_prompt(prompt, response, answer) for prompt, response, answer in zip(prompts, responses, answers)]
         grader_responses = await self.response_generator.generate_responses(prompts=grader_prompts, system_prompt=GRADER_SYSTEM_PROMPT, progress_bar=progress_bar)
         time.sleep(0.1)
@@ -55,6 +84,7 @@ class LLMGrader:
 
     @staticmethod
     def _extract_grades(grader_response: str) -> bool:
+        """Process strings to extract grades"""
         grader_response_stripped = grader_response.strip().lower()
         if "yes" in grader_response_stripped:
             return True
@@ -65,6 +95,7 @@ class LLMGrader:
 
     @staticmethod
     def _construct_grader_prompt(prompt: str, response: str, acceptable_answers: List[str]) -> str:
+        """Construct prompt for LLM grader"""
         grader_prompt = f"""
         Your task is to grade the following proposed answer against the provided answer key. The ground truth is the gold standard regardless of any other information you may have. Return ONLY the word "yes" or "no", with no additional text, based on whether the proposed answer aligns with any of the ground truth answers. Answer "yes" if correct, "no" if incorrect.
 

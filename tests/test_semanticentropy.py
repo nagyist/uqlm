@@ -14,7 +14,7 @@
 
 import pytest
 import json
-from uqlm.scorers import SemanticEntropy
+from uqlm.scorers.shortform.entropy import SemanticEntropy
 from langchain_openai import AzureChatOpenAI
 
 datafile_path = "tests/data/scorers/semanticentropy_results_file.json"

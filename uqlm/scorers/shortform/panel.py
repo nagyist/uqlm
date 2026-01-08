@@ -18,11 +18,11 @@ from typing import List, Optional, Union
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from uqlm.judges.judge import LLMJudge
-from uqlm.scorers.baseclass.uncertainty import UncertaintyQuantifier
+from uqlm.scorers.shortform.baseclass.uncertainty import ShortFormUQ
 from uqlm.utils.results import UQResult
 
 
-class LLMPanel(UncertaintyQuantifier):
+class LLMPanel(ShortFormUQ):
     def __init__(self, judges: List[Union[LLMJudge, BaseChatModel]], llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scoring_templates: Optional[List[str]] = None, explanations: bool = False, additional_context: Optional[str] = None) -> None:
         """
         Class for aggregating multiple instances of LLMJudge using min, max, or majority voting
@@ -33,8 +33,8 @@ class LLMPanel(UncertaintyQuantifier):
             Judges to use. If BaseChatModel, LLMJudge is instantiated using default parameters.
 
         llm : BaseChatModel
-            A langchain llm object to get passed to chain constructor. User is responsible for specifying
-            temperature and other relevant parameters to the constructor of their `llm` object.
+            A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
+            relevant parameters to the constructor of their `llm` object.
 
         max_calls_per_min : int, default=None
             Used to control rate limiting. Will be used for original llm and any judges constructed

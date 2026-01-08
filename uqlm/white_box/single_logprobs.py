@@ -22,14 +22,26 @@ SINGLE_LOGPROBS_SCORER_NAMES = ["normalized_probability", "min_probability", "se
 
 
 class SingleLogprobsScorer(LogprobsScorer):
-    def __init__(self, scorers: List[str] = SINGLE_LOGPROBS_SCORER_NAMES):
-        """Class for computing WhiteBox UQ scores with a single generation"""
+    def __init__(self, scorers: List[str] = SINGLE_LOGPROBS_SCORER_NAMES, length_normalize: bool = True):
+        """
+        Class for computing WhiteBox UQ scores with a single generation
+
+        Parameters
+        ----------
+        scorers : List[str], default=SAMPLED_LOGPROBS_SCORER_NAMES
+            Specifies which scorers to compute.
+            Must be a subset of ["semantic_negentropy", "semantic_density", "monte_carlo_probability", "consistency_and_confidence"].
+
+        length_normalize : bool, default=True
+            Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, and monte_carlo_probability).
+        """
         super().__init__()
         self.scorers = scorers
+        self.length_normalize = length_normalize
 
     def evaluate(self, logprobs_results: List[List[Dict[str, Any]]]) -> Dict[str, List[float]]:
         """Compute scores from logprobs results"""
-        scores_dict = {"normalized_probability": self._compute_single_generation_scores(logprobs_results, self._norm_prob), "min_probability": self._compute_single_generation_scores(logprobs_results, self._min_prob), "sequence_probability": self._compute_single_generation_scores(logprobs_results, self._seq_prob)}
+        scores_dict = {"min_probability": self._compute_single_generation_scores(logprobs_results, self._min_prob), "sequence_probability": self._compute_single_generation_scores(logprobs_results, self._norm_prob) if self.length_normalize else self._compute_single_generation_scores(logprobs_results, self._seq_prob)}
         return {k: scores_dict[k] for k in self.scorers}
 
     def _min_prob(self, single_response_logprobs: List[Dict[str, Any]]) -> float:
