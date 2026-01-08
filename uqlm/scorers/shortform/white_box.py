@@ -22,7 +22,7 @@ from uqlm.white_box.sampled_logprobs import SampledLogprobsScorer, SAMPLED_LOGPR
 from uqlm.white_box.p_true import PTrueScorer
 from uqlm.scorers.shortform.baseclass.uncertainty import ShortFormUQ
 from uqlm.utils.results import UQResult
-from uqlm.utils.warn import beta_warning, deprecation_warning
+from uqlm.utils.warn import beta_warning
 
 ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_NAMES + SAMPLED_LOGPROBS_SCORER_NAMES + ["p_true"]
 
@@ -49,7 +49,7 @@ class WhiteBoxUQ(ShortFormUQ):
             defaults to "You are a helpful assistant."
 
         scorers : List[str], default=None
-            Specifies which white-box UQ scorers to include. Must be subset of ["normalized_probability", "min_probability", "sequence_probability", "max_token_negentropy", "mean_token_negentropy", "probability_margin", "monte_carlo_probability", "consistency_and_confidence", "semantic_negentropy", "semantic_density", "p_true"]. If None, defaults to ["normalized_probability", "min_probability"].
+            Specifies which white-box UQ scorers to include. Must be subset of ["sequence_probability", "min_probability", "max_token_negentropy", "mean_token_negentropy", "probability_margin", "monte_carlo_probability", "consistency_and_confidence", "semantic_negentropy", "semantic_density", "p_true"]. If None, defaults to ["sequence_probability", "min_probability"].
 
         sampling_temperature : float, default=1.0
             The 'temperature' parameter for llm model to generate sampled LLM responses. Must be greater than 0.
@@ -62,7 +62,7 @@ class WhiteBoxUQ(ShortFormUQ):
             Specifies whether to use the prompts in the NLI inputs for semantic entropy and semantic density scorers.
 
         length_normalize : bool, default=True
-            Specifies whether to length normalize the logprobs. This attribute affect the response probability computation for three scorers (semantic_negentropy, semantic_density, monte_carlo_probability, and consistency_and_confidence).
+            Specifies whether to length normalize the logprobs. This attribute affects the response probability computation for sequence_probability, semantic_negentropy, semantic_density, monte_carlo_probability, and consistency_and_confidence.
 
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. If None, detects and returns the best available PyTorch device.
@@ -181,20 +181,19 @@ class WhiteBoxUQ(ShortFormUQ):
         if not scorers:
             self.scorers = self.white_box_names
         else:
+            if "normalized_probability" in scorers:
+                raise ValueError("normalized_probability is deprecated as of v0.5 in favor of sequence_probability with length_normalize=True")
             self.scorers = []
             for scorer in scorers:
                 if scorer in ALL_WHITE_BOX_SCORER_NAMES:
                     self.scorers.append(scorer)
                 else:
                     raise ValueError(f"Invalid scorer provided: {scorer}")
-
-        if "normalized_probability" in self.scorers:
-            deprecation_warning("normalized_probability will be deprecated in favor of sequence_probability with length_normalize=True in v0.5")
         self.single_logprobs_scorer_names = list(set(SINGLE_LOGPROBS_SCORER_NAMES) & set(self.scorers))
         self.top_logprobs_scorer_names = list(set(TOP_LOGPROBS_SCORER_NAMES) & set(self.scorers))
         self.sampled_logprobs_scorer_names = list(set(SAMPLED_LOGPROBS_SCORER_NAMES) & set(self.scorers))
         if self.single_logprobs_scorer_names:
-            self.single_logprobs_scorer = SingleLogprobsScorer(scorers=self.single_logprobs_scorer_names)
+            self.single_logprobs_scorer = SingleLogprobsScorer(scorers=self.single_logprobs_scorer_names, length_normalize=self.length_normalize)
         if self.top_logprobs_scorer_names:
             self.top_logprobs_scorer = TopLogprobsScorer(scorers=self.top_logprobs_scorer_names)
             self.top_k_logprobs = top_k_logprobs

@@ -257,7 +257,7 @@ Below is a sample of code illustrating how to use the `LongTextUQ` class to cond
 
 ```python
 from langchain_openai import ChatOpenAI
-llm = ChatOpenAI(model="gpt-4o-mini")
+llm = ChatOpenAI(model="gpt-4o")
 
 from uqlm import LongTextUQ
 luq = LongTextUQ(llm=llm, scorers=["entailment"], response_refinement=True)
