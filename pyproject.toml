@@ -28,6 +28,7 @@ packages = [
     { include = "uqlm/judges" },
     { include = "uqlm/black_box" },
     { include = "uqlm/white_box" },
+    { include = "uqlm/longform" },
     { include = "uqlm/calibration" },
     { include = "uqlm/resources" },
     { include = "uqlm/utils" },
