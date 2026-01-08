@@ -22,7 +22,7 @@ from uqlm.white_box.sampled_logprobs import SampledLogprobsScorer, SAMPLED_LOGPR
 from uqlm.white_box.p_true import PTrueScorer
 from uqlm.scorers.shortform.baseclass.uncertainty import ShortFormUQ
 from uqlm.utils.results import UQResult
-from uqlm.utils.warn import beta_warning, deprecation_warning
+from uqlm.utils.warn import beta_warning
 
 ALL_WHITE_BOX_SCORER_NAMES = SINGLE_LOGPROBS_SCORER_NAMES + TOP_LOGPROBS_SCORER_NAMES + SAMPLED_LOGPROBS_SCORER_NAMES + ["p_true"]
 

@@ -25,7 +25,7 @@ class SingleLogprobsScorer(LogprobsScorer):
     def __init__(self, scorers: List[str] = SINGLE_LOGPROBS_SCORER_NAMES, length_normalize: bool = True):
         """
         Class for computing WhiteBox UQ scores with a single generation
-        
+
         Parameters
         ----------
         scorers : List[str], default=SAMPLED_LOGPROBS_SCORER_NAMES
