@@ -178,11 +178,11 @@ class WhiteBoxUQ(ShortFormUQ):
 
     def _validate_scorers(self, scorers: List[str], top_k_logprobs: int) -> None:
         """Validate and store scorer list"""
-        if "normalized_probability" in scorers:
-            raise ValueError("normalized_probability is deprecated as of v0.5 in favor of sequence_probability with length_normalize=True")
         if not scorers:
             self.scorers = self.white_box_names
         else:
+            if "normalized_probability" in scorers:
+                raise ValueError("normalized_probability is deprecated as of v0.5 in favor of sequence_probability with length_normalize=True")
             self.scorers = []
             for scorer in scorers:
                 if scorer in ALL_WHITE_BOX_SCORER_NAMES:
