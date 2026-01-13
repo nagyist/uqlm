@@ -31,6 +31,7 @@ class LongTextGraph(LongFormUQ):
         aggregation: str = "mean",
         response_refinement: bool = False,
         claim_decomposition_llm: Optional[BaseChatModel] = None,
+        nli_llm: Optional[BaseChatModel] = None,
         claim_filtering_scorer: Optional[str] = None,
         device: Any = None,
         nli_model_name: str = "microsoft/deberta-large-mnli",
@@ -47,40 +48,57 @@ class LongTextGraph(LongFormUQ):
         llm : langchain `BaseChatModel`, default=None
             A langchain llm `BaseChatModel`. User is responsible for specifying temperature and other
             relevant parameters to the constructor of their `llm` object.
+
         scorers : List[str], default=None
             Specifies which graph-based scorers to include. Must be subset of ["degree_centrality", "betweenness_centrality",
             "closeness_centrality", "page_rank", "laplacian_centrality", "harmonic_centrality"]. If None, defaults to ["closeness_centrality"].
+
         granularity : str, default="claim"
             Specifies whether to decompose and score at claim or sentence level granularity. Must be either "claim" or "sentence"
+
         aggregation : str, default="mean"
             Specifies how to aggregate claim/sentence-level scores to response-level scores. Must be one of 'min' or 'mean'.
+
         response_refinement : bool, default=False
             Specifies whether to refine responses with uncertainty-aware decoding. This approach removes claims with confidence
             scores below the response_refinement_threshold and uses the claim_decomposition_llm to reconstruct the response from
             the retained claims. Only available for claim-level granularity. For more details, refer to
             Jiang et al., 2024: https://arxiv.org/abs/2410.20783
+
         claim_filtering_scorer : Optional[str], default=None
             specifies which scorer to use to filter claims if response_refinement is True. If not provided, defaults to the first
             element of self.scorers.
+
         claim_decomposition_llm : langchain `BaseChatModel`, default=None
             A langchain llm `BaseChatModel` to be used for decomposing responses into individual claims. Also used for claim refinement.
             If granularity="claim" and claim_decomposition_llm is None, the provided `llm` will be used for claim decomposition.
+
+        nli_llm : BaseChatModel, default=None
+            A LangChain chat model for LLM-based NLI inference. If provided, takes precedence over nli_model_name. Only used for
+            mode="unit_response"
+
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. If None, detects and returns the best available PyTorch device.
             Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
+
         nli_model_name : str, default="microsoft/deberta-large-mnli"
             Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
             AutoModelForSequenceClassification.from_pretrained()
+
         system_prompt : str or None, default="You are a helpful assistant."
             Optional argument for user to provide custom system prompt
+
         max_calls_per_min : int, default=None
             Specifies how many api calls to make per minute to avoid a rate limit error. By default, no
             limit is specified.
+
         sampling_temperature : float, default=1.0
             The 'temperature' parameter for llm model to generate sampled LLM responses. Must be greater than 0.
+
         use_n_param : bool, default=False
             Specifies whether to use `n` parameter for `BaseChatModel`. Not compatible with all
             `BaseChatModel` classes. If used, it speeds up the generation process substantially when num_responses > 1.
+
         max_length : int, default=2000
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
@@ -90,7 +108,7 @@ class LongTextGraph(LongFormUQ):
         self.nli_model_name = nli_model_name
         self.max_length = max_length
         self.sampling_temperature = sampling_temperature
-        self.graph_scorer = GraphScorer(nli_model_name=nli_model_name, max_length=max_length, device=device)
+        self.graph_scorer = GraphScorer(nli_model_name=nli_model_name, max_length=max_length, device=device, nli_llm=nli_llm)
         self.claim_merger = ClaimMerger(claim_merging_llm=self.decomposer.claim_decomposition_llm)
         self.prompts = None
         self.responses = None
@@ -164,7 +182,7 @@ class LongTextGraph(LongFormUQ):
 
         all_responses = [[r] + sr for r, sr in zip(self.responses, self.sampled_responses)]
 
-        original_claim_scores, master_claim_scores, graph_score_result = self._score_from_decomposed(original_claim_sets=self.claim_sets, master_claim_sets=self.master_claim_sets, response_sets=all_responses, progress_bar=self.progress_bar)
+        original_claim_scores, master_claim_scores, graph_score_result = await self._score_from_decomposed(original_claim_sets=self.claim_sets, master_claim_sets=self.master_claim_sets, response_sets=all_responses, progress_bar=self.progress_bar)
 
         if self.response_refinement:
             self.claim_scores = master_claim_scores
@@ -178,7 +196,7 @@ class LongTextGraph(LongFormUQ):
 
         return self._construct_result()
 
-    def _score_from_decomposed(self, original_claim_sets: List[List[str]], master_claim_sets: List[List[str]], response_sets: List[List[str]], progress_bar: Optional[Progress] = None) -> Tuple[Any, Any, Any]:
+    async def _score_from_decomposed(self, original_claim_sets: List[List[str]], master_claim_sets: List[List[str]], response_sets: List[List[str]], progress_bar: Optional[Progress] = None) -> Tuple[Any, Any, Any]:
         """
         Compute confidence scores with specified scorers on provided LLM responses. Should only be used if responses and sampled responses
         are already generated. Otherwise, use `generate_and_score`.
@@ -195,7 +213,7 @@ class LongTextGraph(LongFormUQ):
         UQResult
             UQResult containing data (responses and scores) and metadata
         """
-        graph_score_result = self.graph_scorer.evaluate(original_claim_sets=self.claim_sets, master_claim_sets=self.master_claim_sets, response_sets=response_sets, progress_bar=progress_bar)
+        graph_score_result = await self.graph_scorer.evaluate(original_claim_sets=self.claim_sets, master_claim_sets=self.master_claim_sets, response_sets=response_sets, progress_bar=progress_bar)
         original_claim_scores, master_claim_scores = self._unpack_results(graph_score_result)
         return original_claim_scores, master_claim_scores, graph_score_result
 
