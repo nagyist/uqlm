@@ -81,13 +81,14 @@ class TestGraphScorer:
                 if not np.isnan(value):
                     assert 0 <= value <= 1, f"{metric_name} for node {node_idx} = {value} is not in [0, 1]"
 
-    def test_evaluate_returns_claim_scores(self, graph_scorer):
+    @pytest.mark.asyncio
+    async def test_evaluate_returns_claim_scores(self, graph_scorer):
         """Verify evaluate returns properly structured ClaimScore objects."""
         original_claims = [["The sky is blue.", "Water is wet."]]
         master_claims = [["The sky is blue.", "Water is wet.", "Fire is hot."]]
         responses = [["The sky is blue and water is wet.", "The sky appears blue.", "Water feels wet."]]
 
-        result = graph_scorer.evaluate(original_claim_sets=original_claims, master_claim_sets=master_claims, response_sets=responses)
+        result = await graph_scorer.evaluate(original_claim_sets=original_claims, master_claim_sets=master_claims, response_sets=responses)
 
         assert len(result) == 1  # One response set
         assert len(result[0]) == len(master_claims[0])  # One ClaimScore per master claim
@@ -99,13 +100,14 @@ class TestGraphScorer:
             for scorer in GRAPH_SCORERS:
                 assert scorer in claim_score.scores
 
-    def test_original_response_flag_correctly_set(self, graph_scorer):
+    @pytest.mark.asyncio
+    async def test_original_response_flag_correctly_set(self, graph_scorer):
         """Verify original_response flag distinguishes original vs sampled claims."""
         original_claims = [["Claim A", "Claim B"]]
         master_claims = [["Claim A", "Claim B", "Claim C"]]  # C is from sampled responses
         responses = [["Response 1", "Response 2"]]
 
-        result = graph_scorer.evaluate(original_claim_sets=original_claims, master_claim_sets=master_claims, response_sets=responses)
+        result = await graph_scorer.evaluate(original_claim_sets=original_claims, master_claim_sets=master_claims, response_sets=responses)
 
         # Claims A and B should be marked as original
         assert result[0][0].original_response is True  # Claim A
