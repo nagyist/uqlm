@@ -14,14 +14,15 @@
 
 from typing import List, Any, Optional
 from rich.progress import Progress
-from uqlm.nli.nli import NLI
+from langchain_core.language_models.chat_models import BaseChatModel
+from uqlm.nli import NLI, EntailmentClassifier
 from uqlm.longform.luq.baseclass.claims_scorer import ClaimScorer, ClaimScores
 
 
 class UnitResponseScorer(ClaimScorer):
-    def __init__(self, nli_model_name: str = "microsoft/deberta-large-mnli", device: Any = None, max_length: int = 2000) -> None:
+    def __init__(self, nli_model_name: str = "microsoft/deberta-large-mnli", device: Any = None, max_length: int = 2000, nli_llm: Optional[BaseChatModel] = None) -> None:
         """
-        LUQScorer calculates variations of the LUQ, LUQ-Atomic, or LUQ-Pair scores.
+        Calculates variations of the LUQ and LUQ-Atomic scorers: https://arxiv.org/abs/2403.20279
 
         Parameters
         ----------
@@ -36,9 +37,15 @@ class UnitResponseScorer(ClaimScorer):
         max_length : int, default=2000
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
+
+        nli_llm : BaseChatModel, default=None
+            A LangChain chat model for LLM-based NLI inference. If provided, takes precedence over nli_model_name.
         """
         self.nli_model_name = nli_model_name
-        self.nli = NLI(device=device, nli_model_name=nli_model_name, max_length=max_length)
+        if nli_llm:
+            self.entailment_classifier = EntailmentClassifier(nli_llm=nli_llm)
+        else:
+            self.nli = NLI(device=device, nli_model_name=nli_model_name, max_length=max_length)
         self.progress_bar = None
         self.matched_claim = False
 
@@ -67,3 +74,29 @@ class UnitResponseScorer(ClaimScorer):
             raise ValueError("claim_sets and sampled_responses must be of equal length")
         entailment_score_lists, noncontradict_score_lists, contrasted_entailment_score_lists = self._compute_response_level_nli_score_lists(claim_sets=claim_sets, sampled_responses=sampled_responses)
         return ClaimScores(entailment_score_lists=entailment_score_lists, noncontradict_score_lists=noncontradict_score_lists, contrasted_entailment_score_lists=contrasted_entailment_score_lists)
+
+    async def evaluate_with_llm(self, claim_sets: List[List[str]], sampled_responses: List[List[str]], progress_bar: Optional[Progress] = None) -> ClaimScores:
+        """
+        Evaluate the LUQ score and claim scores for a list of claims from each original response and sampled responses.
+
+        Parameters
+        ----------
+        claim_sets : list of list of strings
+            List of original responses decomposed into lists of either claims or sentences
+
+        sampled_responses : list of list of strings
+            Candidate responses to be compared to the decomposed original responses
+
+        progress_bar : rich.progress.Progress, default=None
+            If provided, displays a progress bar while scoring responses
+
+        Returns
+        -------
+        Instance of ClaimScores
+            Contains claim-level entailment, non-contradiction, and contrasted entailment scores averaged across candidate responses.
+        """
+        self.progress_bar = progress_bar
+        if len(claim_sets) != len(sampled_responses):
+            raise ValueError("claim_sets and sampled_responses must be of equal length")
+        entailment_score_lists = await self.entailment_classifier.evaluate_claim_entailment(response_sets=sampled_responses, claim_sets=claim_sets, progress_bar=progress_bar)
+        return ClaimScores(entailment_score_lists=entailment_score_lists, noncontradict_score_lists=entailment_score_lists, contrasted_entailment_score_lists=entailment_score_lists)
