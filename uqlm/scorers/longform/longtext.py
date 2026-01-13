@@ -35,6 +35,7 @@ class LongTextUQ(LongFormUQ):
         response_refinement: bool = False,
         claim_filtering_scorer: Optional[str] = None,
         claim_decomposition_llm: Optional[BaseChatModel] = None,
+        nli_llm: Optional[BaseChatModel] = None,
         device: Any = None,
         nli_model_name: str = "microsoft/deberta-large-mnli",
         system_prompt: str = "You are a helpful assistant.",
@@ -80,6 +81,10 @@ class LongTextUQ(LongFormUQ):
             A langchain llm `BaseChatModel` to be used for decomposing responses into individual claims. Also used for claim refinement.
             If granularity="claim" and claim_decomposition_llm is None, the provided `llm` will be used for claim decomposition.
 
+        nli_llm : BaseChatModel, default=None
+            A LangChain chat model for LLM-based NLI inference. If provided, takes precedence over nli_model_name. Only used for
+            mode="unit_response"
+
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. If None, detects and returns the best available PyTorch device.
             Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
@@ -112,6 +117,7 @@ class LongTextUQ(LongFormUQ):
         self.mode = mode
         self.max_length = max_length
         self.sampling_temperature = sampling_temperature
+        self.nli_llm = nli_llm
         self._validate_scorers()
         self.prompts = None
         self.responses = None
@@ -192,7 +198,7 @@ class LongTextUQ(LongFormUQ):
             await self._decompose_candidate_responses(show_progress_bars)
         self._display_scoring_header(show_progress_bars)
 
-        self.scores_dict = self._score_from_decomposed(claim_sets=self.claim_sets, sampled_responses=self.sampled_responses, sampled_claim_sets=self.sampled_claim_sets, progress_bar=self.progress_bar)
+        self.scores_dict = await self._score_from_decomposed(claim_sets=self.claim_sets, sampled_responses=self.sampled_responses, sampled_claim_sets=self.sampled_claim_sets, progress_bar=self.progress_bar)
 
         if self.response_refinement:
             self.uad_result = await self.uncertainty_aware_decode(claim_sets=self.claim_sets, claim_scores=self.claim_scores[self.uad_scorer], response_refinement_threshold=response_refinement_threshold, show_progress_bars=show_progress_bars)
@@ -215,7 +221,7 @@ class LongTextUQ(LongFormUQ):
 
         return self._construct_result()
 
-    def _score_from_decomposed(self, claim_sets: List[List[str]], sampled_responses: Optional[List[List[str]]] = None, sampled_claim_sets: Optional[List[List[List[str]]]] = None, progress_bar: Optional[Progress] = None) -> UQResult:
+    async def _score_from_decomposed(self, claim_sets: List[List[str]], sampled_responses: Optional[List[List[str]]] = None, sampled_claim_sets: Optional[List[List[List[str]]]] = None, progress_bar: Optional[Progress] = None) -> UQResult:
         """
         Compute confidence scores with specified scorers on provided LLM responses. Should only be used if responses and sampled responses
         are already generated. Otherwise, use `generate_and_score`.
@@ -237,7 +243,11 @@ class LongTextUQ(LongFormUQ):
             UQResult containing data (responses and scores) and metadata
         """
         if self.mode == "unit_response":
-            self.claim_scores = self.unit_response_scorer.evaluate(claim_sets=self.claim_sets, sampled_responses=sampled_responses, progress_bar=progress_bar).to_dict()
+            if self.nli_llm:
+                llm_nli_result = await self.unit_response_scorer.evaluate_with_llm(claim_sets=self.claim_sets, sampled_responses=sampled_responses, progress_bar=progress_bar)
+                self.claim_scores = llm_nli_result.to_dict()
+            else:
+                self.claim_scores = self.unit_response_scorer.evaluate(claim_sets=self.claim_sets, sampled_responses=sampled_responses, progress_bar=progress_bar).to_dict()
         elif self.mode == "matched_unit":
             self.claim_scores = self.matched_unit_scorer.evaluate(claim_sets=self.claim_sets, sampled_claim_sets=self.sampled_claim_sets, progress_bar=progress_bar).to_dict()
 
@@ -270,7 +280,7 @@ class LongTextUQ(LongFormUQ):
                 Invalid scorers: {set(self.scorers) - set(UNIT_RESPONSE_SCORERS)}. Must be subset of {UNIT_RESPONSE_SCORERS} when mode="unit_response"
                 """
                 )
-            self.unit_response_scorer = UnitResponseScorer(nli_model_name=self.nli_model_name, device=self.device, max_length=self.max_length)
+            self.unit_response_scorer = UnitResponseScorer(nli_model_name=self.nli_model_name, device=self.device, max_length=self.max_length, nli_llm=self.nli_llm)
         elif self.mode == "matched_unit":
             self.matched_unit_scorer = MatchedUnitScorer(nli_model_name=self.nli_model_name, device=self.device, max_length=self.max_length)
             if set(self.scorers) - set(MATCHED_UNIT_SCORERS):

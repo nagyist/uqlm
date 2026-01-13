@@ -9,9 +9,9 @@ Definition
 Graph-based scorers, proposed by Jiang et al. (2024), decompose original and sampled responses into claims, obtain the union of unique claims across all responses, and compute graph centrality metrics on the bipartite graph of claim-response entailment to measure uncertainty. These scorers operate only at the claim level, as sentences typically contain multiple claims, meaning their union is not well-defined. Formally, we denote a bipartite graph :math:`G` with node set :math:`V = \mathbf{s} \cup  \mathbf{y}`, where :math:`\mathbf{y}` is a set of :math:`m` responses generated from the same prompt and :math:`\mathbf{s}` is the union of all unique claims across those decomposed responses. In particular, an edge exists between a claim-response pair :math:`(s, y) \in  \mathbf{s} \times \mathbf{y}` if and only if claim :math:`s` is entailed in response :math:`y`. We define the following graph metrics for claim :math:`s`:
 
 
-* **Degree Centrality** - :math:`\frac{1}{m} \sum_{j=1}^m P(\text{entail}|y_j, s)$ is the average edge weight, measured by entailment probability for claim node $s$. 
+* **Degree Centrality** - :math:`\frac{1}{m} \sum_{j=1}^m P(\text{entail}|y_j, s)` is the average edge weight, measured by entailment probability for claim node `s`. 
 
-* **Betweenness Centrality** - :math:`\frac{1}{B_{\text{max}}}\sum_{u \neq v \neq s} \frac{\sigma_{uv}(s)}{\sigma_{uv}}` measures uncertainty by calculating the proportion of shortest paths between node pairs that pass through node :math:`s`, where :math:`\sigma_{uv}` represents all shortest paths between nodes :math:`u` and :math:`v`, and :math:`B_{\text{max}}` is the maximum possible value, given by :math:`B_{\text{max}}=\frac{1}{2} [m^2 (p + 1)^2 + m (p + 1)(2t - p - 1) - t (2p - t + 3)]$, $p = \frac{(|\mathbf{s}| - 1)}{m}$, and $t = (|\mathbf{s}| - 1) \mod m`.
+* **Betweenness Centrality** - :math:`\frac{1}{B_{\text{max}}}\sum_{u \neq v \neq s} \frac{\sigma_{uv}(s)}{\sigma_{uv}}` measures uncertainty by calculating the proportion of shortest paths between node pairs that pass through node :math:`s`, where :math:`\sigma_{uv}` represents all shortest paths between nodes :math:`u` and :math:`v`, and :math:`B_{\text{max}}` is the maximum possible value, given by :math:`B_{\text{max}}=\frac{1}{2} [m^2 (p + 1)^2 + m (p + 1)(2t - p - 1) - t (2p - t + 3)]`, `p = \frac{(|\mathbf{s}| - 1)}{m}`, and `t = (|\mathbf{s}| - 1) \mod m`.
 
 
 * **Closeness Centrality** - :math:`\frac{m + 2(|\mathbf{s}| - 1) }{\sum_{v \neq s}dist(s, v)}` measures the inverse sum of distances to all other nodes, normalized by the minimum possible distance.
@@ -22,7 +22,7 @@ Graph-based scorers, proposed by Jiang et al. (2024), decompose original and sam
 
 * **PageRank** - :math:`\frac{1-d}{|V|} + d \sum_{v \in N(s)} \frac{C_{PR}(v)}{N(v)}` is the stationary distribution probability of a random walk with restart probability :math:`(1-d)`, where :math:`N(s)` denotes the set of neighboring nodes of :math:`s` and :math:`C_{PR}(v)` is PageRank of node :math:`v`.
 
-where :math:`\mathbf{y}^{(s)}_{\text{cand}} = {y_1^{(s)}, ..., y_m^{(s)}}` are $m$ candidate responses.
+where :math:`\mathbf{y}^{(s)}_{\text{cand}} = \{y_1^{(s)}, ..., y_m^{(s)}\}` are $m$ candidate responses.
 
 **Key Properties:**
 

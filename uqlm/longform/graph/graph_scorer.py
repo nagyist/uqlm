@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from uqlm.longform.luq.baseclass.claims_scorer import ClaimScorer, ClaimScore
-from typing import List, Optional, Any
-from rich.progress import Progress
-from uqlm.nli.nli import NLI
-import numpy as np
+
 import time
+from typing import List, Optional, Any
+
+import numpy as np
 from scipy import sparse
+from rich.progress import Progress
+from langchain_core.language_models.chat_models import BaseChatModel
+
+from uqlm.nli import NLI, EntailmentClassifier
+from uqlm.longform.luq.baseclass.claims_scorer import ClaimScorer, ClaimScore
 
 try:
     import networkx as nx
@@ -27,18 +31,59 @@ except ImportError:
 
 
 class GraphScorer(ClaimScorer):
-    def __init__(self, nli_model_name: Optional[str] = "microsoft/deberta-large-mnli", device: Optional[Any] = None, max_length: Optional[int] = 2000) -> None:
+    def __init__(self, nli_model_name: Optional[str] = "microsoft/deberta-large-mnli", device: Optional[Any] = None, max_length: Optional[int] = 2000, nli_llm: Optional[BaseChatModel] = None) -> None:
+        """
+        Calculates variations of the graph-based uncertainty metrics by Jiang et al., 2024: https://arxiv.org/abs/2410.20783
+
+        Parameters
+        ----------
+        nli_model_name : str, default="microsoft/deberta-large-mnli"
+            Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
+            AutoModelForSequenceClassification.from_pretrained()
+
+        device : torch.device input or torch.device object, default=None
+            Specifies the device that classifiers use for prediction. Set to "cuda" for classifiers to be able to
+            leverage the GPU.
+
+        max_length : int, default=2000
+            Specifies the maximum allowed string length. Responses longer than this value will be truncated to
+            avoid OutOfMemoryError
+
+        nli_llm : BaseChatModel, default=None
+            A LangChain chat model for LLM-based NLI inference. If provided, takes precedence over nli_model_name.
+        """
         if nx is None:
             print("graph-based scoring requires `networkx` package. Please install using `pip install networkx`.")
 
-        self.nli_model_name = nli_model_name
-        self.device = device
-        self.max_length = max_length
-        self.nli = NLI(device=device, nli_model_name=nli_model_name, max_length=max_length)
+        self.nli_llm = nli_llm
+        if nli_llm:
+            self.entailment_classifier = EntailmentClassifier(nli_llm=nli_llm)
+        else:
+            self.nli = NLI(device=device, nli_model_name=nli_model_name, max_length=max_length)
 
-    def evaluate(self, original_claim_sets: List[List[str]], master_claim_sets: List[List[str]], response_sets: List[List[str]], binary_edge_threshold: float = 0.5, progress_bar: Optional[Progress] = None) -> List[List[ClaimScore]]:
+    async def evaluate(self, original_claim_sets: List[List[str]], master_claim_sets: List[List[str]], response_sets: List[List[str]], binary_edge_threshold: float = 0.5, progress_bar: Optional[Progress] = None) -> List[List[ClaimScore]]:
+        """
+        Evaluate the graph-based scores over response sets and corresponding claim sets
+
+        Parameters
+        ----------
+        original_claim_sets : list of list of strings
+            List of original claim sets
+
+        master_claim_sets : list of list of strings
+            List of master claim sets
+
+        sampled_responses : list of list of strings
+            Candidate responses to be compared to the decomposed original responses
+
+        progress_bar : rich.progress.Progress, default=None
+            If provided, displays a progress bar while scoring responses
+        """
         # Step 1: Compute adjacency matrices for all response sets
-        biadjacency_matrices = self._compute_adjacency_matrices(response_sets, master_claim_sets, progress_bar)
+        if self.nli_llm:
+            biadjacency_matrices = await self.entailment_classifier.evaluate_claim_entailment(response_sets=response_sets, claim_sets=master_claim_sets, progress_bar=progress_bar)
+        else:
+            biadjacency_matrices = self._compute_adjacency_matrices(response_sets, master_claim_sets, progress_bar)
 
         # Step 2: Construct graphs and calculate scores for all response sets
         claim_score_lists = self._construct_graphs_and_calculate_scores(response_sets, original_claim_sets, master_claim_sets, biadjacency_matrices, binary_edge_threshold, progress_bar)
@@ -55,22 +100,6 @@ class GraphScorer(ClaimScorer):
         (when reliable) or custom structural normalization based on graph topology.
         The graph has edges with "weight" attributes (actual entailment scores). Strength-based
         metrics use these weights, while path-based metrics use the unweighted graph structure.
-        Args:
-            G: Graph with edges weighted by entailment scores. Edges only exist where scores
-               meet the binary_edge_threshold.
-            num_claims: The number of claims.
-            num_responses: The number of responses.
-        Returns:
-            A dictionary of claim node graph metrics (all normalized to [0, 1]):
-            - degree_centrality: Normalized by opposite set size (structural bound)
-            - betweenness_centrality: NetworkX bipartite normalization (bipartite-specific bound)
-            - closeness_centrality: NetworkX bipartite normalization (clipped to [0, 1])
-            - page_rank: Standard PageRank probability distribution (sums to 1)
-            - laplacian_centrality: NetworkX normalization (normalized=True default)
-            - harmonic_centrality: Custom normalization (theoretical max for bipartite structure)
-        Notes:
-            - Strength-based metrics (degree, PageRank, laplacian): Use edge weights
-            - Path-based metrics (betweenness, closeness, harmonic): Use unweighted/binary approach
         """
 
         # Calculate weighted degree (sum of edge weights) for each node
@@ -121,13 +150,6 @@ class GraphScorer(ClaimScorer):
     def _construct_bipartite_graph(self, biadjacency_matrix: np.ndarray, num_claims: int, num_responses: int, binary_edge_threshold: float) -> nx.Graph:
         """
         Construct a bipartite graph from a biadjacency matrix.
-        Args:
-            biadjacency_matrix: A 2D numpy array of shape (num_claims, num_responses) with entailment scores.
-            num_claims: The number of claims.
-            num_responses: The number of responses.
-            binary_edge_threshold: Threshold for edge existence. Only edges with scores >= this value are created.
-        Returns:
-            nx.Graph: Bipartite graph with edges weighted by entailment scores.
         """
         # Create filtered matrix: only keep edges at or above threshold
         # The actual entailment scores are preserved as edge weights
@@ -150,10 +172,9 @@ class GraphScorer(ClaimScorer):
         """
         num_response_sets = len(response_sets)
 
-        # Create progress task if progress bar is provided
         progress_task = None
         if progress_bar:
-            progress_task = progress_bar.add_task("  - Building claim-response biadjacency matrices...", total=num_response_sets)
+            progress_task = progress_bar.add_task("  - Evaluating claim-response entailment...", total=num_response_sets)
 
         biadjacency_matrices = []
         for i in range(num_response_sets):
@@ -179,20 +200,10 @@ class GraphScorer(ClaimScorer):
         """Construct bipartite graphs and calculate claim scores for all response sets."""
         num_response_sets = len(response_sets)
 
-        # Create progress task if progress bar is provided
-        progress_task = None
-        if progress_bar:
-            progress_task = progress_bar.add_task("  - Constructing graphs and calculating scores...", total=num_response_sets)
-
         claim_score_lists = []
         for i in range(num_response_sets):
             claim_scores = self._process_single_graph(i, response_sets[i], original_claim_sets[i], master_claim_sets[i], biadjacency_matrices[i], binary_edge_threshold)
             claim_score_lists.append(claim_scores)
-
-            # Update progress
-            if progress_bar and progress_task is not None:
-                progress_bar.update(progress_task, advance=1)
-
         return claim_score_lists
 
     def _process_single_graph(self, index: int, responses: List[str], original_claim_set: List[str], master_claim_set: List[str], biadjacency_matrix: np.ndarray, binary_edge_threshold: float) -> List[ClaimScore]:

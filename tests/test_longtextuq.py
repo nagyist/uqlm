@@ -87,7 +87,8 @@ class TestLongTextUQ:
             mock_unit_response_class.assert_called_once_with(
                 nli_model_name="microsoft/deberta-large-mnli",
                 device="cpu",
-                max_length=2000
+                max_length=2000,
+                nli_llm=None,
             )
             
             # Check that attributes were set correctly
@@ -123,7 +124,8 @@ class TestLongTextUQ:
             mock_unit_response_class.assert_called_once_with(
                 nli_model_name="custom/model",
                 device="cpu",
-                max_length=1000
+                max_length=1000,
+                nli_llm=None,
             )
             
             # Check that attributes were set correctly
@@ -159,7 +161,7 @@ class TestLongTextUQ:
             mock_matched_unit_class.assert_called_once_with(
                 nli_model_name="custom/model",
                 device="cpu",
-                max_length=1000
+                max_length=1000,
             )
             
             # Check that attributes were set correctly
@@ -435,7 +437,8 @@ class TestLongTextUQ:
             assert result.data["responses"] == responses
             assert result.data["refined_responses"] == ["Refined 1", "Refined 2"]
 
-    def test_score_from_decomposed_unit_response(self, uq_unit_response):
+    @pytest.mark.asyncio
+    async def test_score_from_decomposed_unit_response(self, uq_unit_response):
         """Test _score_from_decomposed method with unit_response mode."""
         claim_sets = [["Claim 1.1", "Claim 1.2"], ["Claim 2.1"]]
         sampled_responses = [["Sample 1.1", "Sample 1.2"], ["Sample 2.1", "Sample 2.2"]]
@@ -457,7 +460,7 @@ class TestLongTextUQ:
             mock_aggregate.side_effect = [0.8, 0.9, 0.85]  # For entailment, noncontradiction, contrasted_entailment
 
             # Call the method
-            result = uq_unit_response._score_from_decomposed(
+            result = await uq_unit_response._score_from_decomposed(
                 claim_sets=claim_sets,
                 sampled_responses=sampled_responses,
                 progress_bar=progress_bar
@@ -476,7 +479,8 @@ class TestLongTextUQ:
                 "contrasted_entailment": 0.85
             }
 
-    def test_score_from_decomposed_matched_unit(self, uq_matched_unit):
+    @pytest.mark.asyncio
+    async def test_score_from_decomposed_matched_unit(self, uq_matched_unit):
         """Test _score_from_decomposed method with matched_unit mode."""
         claim_sets = [["Claim 1.1", "Claim 1.2"], ["Claim 2.1"]]
         sampled_claim_sets = [[["Claim 1.1.1", "Claim 1.1.2"], ["Claim 1.2.1"]], [["Claim 2.1.1"], ["Claim 2.2.1"]]]
@@ -500,7 +504,7 @@ class TestLongTextUQ:
             mock_aggregate.side_effect = [0.8, 0.9, 0.85, 0.75, 0.7]  # For all five scorers
 
             # Call the method
-            result = uq_matched_unit._score_from_decomposed(
+            result = await uq_matched_unit._score_from_decomposed(
                 claim_sets=claim_sets,
                 sampled_claim_sets=sampled_claim_sets,
                 progress_bar=progress_bar
