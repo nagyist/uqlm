@@ -162,7 +162,6 @@ class TestLongTextUQ:
                 nli_model_name="custom/model",
                 device="cpu",
                 max_length=1000,
-                nli_llm=None,
             )
             
             # Check that attributes were set correctly
