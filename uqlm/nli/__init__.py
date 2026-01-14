@@ -13,7 +13,8 @@
 # limitations under the License.
 
 
+from uqlm.nli.entailment import EntailmentClassifier
 from uqlm.nli.nli import NLI
 from uqlm.nli.cluster import SemanticClusterer
 
-__all__ = ["NLI", "SemanticClusterer"]
+__all__ = ["NLI", "SemanticClusterer", "EntailmentClassifier"]
