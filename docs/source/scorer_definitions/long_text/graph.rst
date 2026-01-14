@@ -18,11 +18,11 @@ Graph-based scorers, proposed by Jiang et al. (2024), decompose original and sam
 
 * **Harmonic Centrality** - :math:`\frac{1}{H_{\text{max}}}\sum_{v \neq s}\frac{1}{dist(s, v)}` is the sum of inverse of distances to all other nodes, normalized by the maximum possible value, where :math:`H_{\text{max}}=m + \frac{ |\mathbf{s}| - 1}{2}`.
 
-* **Laplacian Centrality** - :math:`\frac{E_L (G)-E_L (G_{\text{-} s})}{E_L (G)}` is the proportional drop in Laplacian energy :math:`E_L (G)` resulting from dropping node $s$ from the graph, where :math:`G_{\text{-}s}` denotes the graph :math:`G` with node $s$ removed, :math:`E_L (G)  = \sum_{i} \lambda_i^2`, and :math:`\lambda_i` are the eigenvalues of :math:`G`'s Laplacian matrix.
+* **Laplacian Centrality** - :math:`\frac{E_L (G)-E_L (G_{\text{-} s})}{E_L (G)}` is the proportional drop in Laplacian energy :math:`E_L (G)` resulting from dropping node :math:`s` from the graph, where :math:`G_{\text{-}s}` denotes the graph :math:`G` with node :math:`s` removed, :math:`E_L (G)  = \sum_{i} \lambda_i^2`, and :math:`\lambda_i` are the eigenvalues of :math:`G`'s Laplacian matrix.
 
 * **PageRank** - :math:`\frac{1-d}{|V|} + d \sum_{v \in N(s)} \frac{C_{PR}(v)}{N(v)}` is the stationary distribution probability of a random walk with restart probability :math:`(1-d)`, where :math:`N(s)` denotes the set of neighboring nodes of :math:`s` and :math:`C_{PR}(v)` is PageRank of node :math:`v`.
 
-where :math:`\mathbf{y}^{(s)}_{\text{cand}} = \{y_1^{(s)}, ..., y_m^{(s)}\}` are $m$ candidate responses.
+where :math:`\mathbf{y}^{(s)}_{\text{cand}} = \{y_1^{(s)}, ..., y_m^{(s)}\}` are :math:`m` candidate responses.
 
 **Key Properties:**
 

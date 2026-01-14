@@ -12,7 +12,7 @@ The Long-text UQ (LUQ) approach demonstrated here is adapted from Zhang et al. (
 
     c_g(s; \mathbf{y}_{\text{cand}}) = \frac{1}{m} \sum_{j=1}^m P(\text{entail}|y_j, s)
 
-where :math:`\mathbf{y}^{(s)}_{\text{cand}} = {y_1^{(s)}, ..., y_m^{(s)}}` are :math:`m` candidate responses, and :math:`P(\text{entail}|y_j, s)` denotes the NLI-estimated probability that $s$ is entailed in :math:`y_j`.
+where :math:`\mathbf{y}^{(s)}_{\text{cand}} = {y_1^{(s)}, ..., y_m^{(s)}}` are :math:`m` candidate responses, and :math:`P(\text{entail}|y_j, s)` denotes the NLI-estimated probability that :math:`s` is entailed in :math:`y_j`.
 
 **Key Properties:**
 
