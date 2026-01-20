@@ -35,7 +35,7 @@ The notebooks are organized into core methods, long-form techniques, and advance
 | [BS Detector Off-the-Shelf UQ Ensemble](ensemble_off_the_shelf_demo.ipynb) | Ready-to-use ensemble without training | Depends on ensemble components | Medium-High (multiple generations and comparisons) |
 
 
-## Getting Started
+## Where should I start?
 
 We recommend starting with the [Black-Box UQ](black_box_demo.ipynb) notebook if you're new to uncertainty quantification or don't have access to model internals.
 

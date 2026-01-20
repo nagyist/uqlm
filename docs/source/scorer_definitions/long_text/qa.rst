@@ -17,7 +17,7 @@ where :math:`y_0^{(s)}` is the original unit response, :math:`\mathbf{y}^{(s)}_{
 **Key Properties:**
 
 - Claim or sententence-level scoring
-- Less complex (cost and latency) than other long-form scoring methods
+- More complex (cost and latency) than LUQ-style scoring methods
 - Score range: :math:`[0, 1]`
 
 How It Works
