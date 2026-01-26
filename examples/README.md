@@ -14,6 +14,7 @@ The notebooks are organized into core methods, long-form techniques, and advance
 | [White-Box UQ (Single-Generation)](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_single_generation_demo.ipynb) | Fastest and most efficient UQ when you have token probabilities | Requires token probability access | Negligible (single generation) |
 | [White-Box UQ (Multi-Generation)](https://github.com/cvs-health/uqlm/blob/main/examples/white_box_multi_generation_demo.ipynb) | Higher accuracy UQ when compute budget allows | Requires token probability access | Medium-High (multiple generations) |
 | [LLM-as-a-Judge](https://github.com/cvs-health/uqlm/blob/main/examples/judges_demo.ipynb) | Leveraging one or more LLMs to assess hallucination likelihood | All LLMs (API-only access) | Low-Medium (depends on which judge(s)) |
+| [Ensemble with White-Box Scorers](https://github.com/cvs-health/uqlm/blob/main/examples/ensemble_white_box_scorers_demo.ipynb) | Combining white-box scorers (single-gen, top-logprobs, sampled-logprobs, p_true) in one ensemble | Requires token probability access | Varies by scorers selected |
 | [Train a UQ Ensemble](https://github.com/cvs-health/uqlm/blob/main/examples/ensemble_tuning_demo.ipynb) | Maximizing performance by combining multiple UQ methods | Depends on ensemble components | Low-High (depends on selected components) |
 
 ### Tutorials for Long-Form Uncertainty Quantification Methods (for long-text outputs)

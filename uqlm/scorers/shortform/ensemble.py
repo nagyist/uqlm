@@ -33,6 +33,10 @@ from uqlm.utils.grader import LLMGrader
 from uqlm.utils.tuner import Tuner
 from uqlm.utils.llm_config import save_llm_config, load_llm_config
 
+# Define scorer categories to avoid circular imports
+TOP_LOGPROBS_SCORER_NAMES = ["min_token_negentropy", "mean_token_negentropy", "probability_margin"]
+SAMPLED_LOGPROBS_SCORER_NAMES = ["semantic_negentropy", "semantic_density", "monte_carlo_probability", "consistency_and_confidence"]
+
 
 class UQEnsemble(ShortFormUQ):
     def __init__(
@@ -67,8 +71,9 @@ class UQEnsemble(ShortFormUQ):
         scorers : List[Union[str, BaseChatModel]] default=None
             Specifies which UQ components to include. List containing instances of BaseChatModel, LLMJudge, black-box scorer names from
             ['semantic_negentropy', 'noncontradiction','exact_match', 'bert_score', 'cosine_sim'], or white-box scorer names from
-            ["normalized_probability", "min_probability"] (other white-box scorers not yet supported). If None, defaults to the
-            off-the-shelf BS Detector ensemble by Chen and Mueller (2023) :footcite:`chen2023quantifyinguncertaintyanswerslanguage`
+            ["sequence_probability", "min_probability", "min_token_negentropy", "mean_token_negentropy", "probability_margin",
+            "semantic_negentropy", "semantic_density", "monte_carlo_probability", "consistency_and_confidence", "p_true"].
+            If None, defaults to the off-the-shelf BS Detector ensemble by Chen and Mueller (2023) :footcite:`chen2023quantifyinguncertaintyanswerslanguage`
             which uses components ["noncontradiction", "exact_match", llm] with respective weights of [0.56, 0.14, 0.3]
 
         device : str or torch.device input or torch.device object, default="cpu"
@@ -177,11 +182,21 @@ class UQEnsemble(ShortFormUQ):
         self._construct_progress_bar(show_progress_bars, _existing_progress_bar=_existing_progress_bar)
         self._display_generation_header(show_progress_bars)
 
-        responses = await self.generate_original_responses(prompts, progress_bar=self.progress_bar)
-        if self.black_box_components:
+        # Determine if we need top_k_logprobs for top-logprobs scorers
+        top_k_logprobs = None
+        if self.white_box_components:
+            if any(scorer in TOP_LOGPROBS_SCORER_NAMES for scorer in self.white_box_components):
+                top_k_logprobs = 15
+
+        responses = await self.generate_original_responses(prompts, top_k_logprobs=top_k_logprobs, progress_bar=self.progress_bar)
+
+        # Generate sampled responses if needed by black-box or sampled-logprobs white-box scorers
+        needs_sampled_responses = self.black_box_components or (self.white_box_components and any(scorer in SAMPLED_LOGPROBS_SCORER_NAMES for scorer in self.white_box_components))
+        if needs_sampled_responses:
             sampled_responses = await self.generate_candidate_responses(prompts, num_responses=self.num_responses, progress_bar=self.progress_bar)
         else:
             sampled_responses = None
+            self.multiple_logprobs = [[None] * self.num_responses] * len(prompts)
 
         result = await self.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=self.logprobs, show_progress_bars=show_progress_bars, _existing_progress_bar=_existing_progress_bar)
 
@@ -242,7 +257,7 @@ class UQEnsemble(ShortFormUQ):
                 self._update_best(black_box_results.data["responses"])
 
         if self.white_box_components:
-            white_box_results = await self.white_box_object.score(logprobs_results=self.logprobs, show_progress_bars=False)
+            white_box_results = await self.white_box_object.score(logprobs_results=self.logprobs, prompts=prompts, responses=self.responses, sampled_responses=self.sampled_responses, sampled_logprobs_results=self.multiple_logprobs, show_progress_bars=False)
 
         if self.judges:
             self._start_progress_bar()
@@ -533,7 +548,7 @@ class UQEnsemble(ShortFormUQ):
         if self.black_box_components:
             self.black_box_object = BlackBoxUQ(scorers=self.black_box_components, device=self.device, nli_model_name=self.nli_model_name, max_length=self.max_length, use_best=self.use_best)
         if self.white_box_components:
-            self.white_box_object = WhiteBoxUQ()
+            self.white_box_object = WhiteBoxUQ(llm=self.llm, scorers=self.white_box_components, device=self.device, system_prompt=self.system_prompt, max_calls_per_min=self.max_calls_per_min, sampling_temperature=self.sampling_temperature, use_n_param=self.use_n_param, max_length=self.max_length)
         if self.judges:
             self.judges_object = LLMPanel(judges=self.judges, max_calls_per_min=self.max_calls_per_min, scoring_templates=self.scoring_templates)
         self.components = components
