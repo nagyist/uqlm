@@ -31,7 +31,7 @@ class BlackBoxUQ(ShortFormUQ):
         device: Any = None,
         use_best: bool = True,
         nli_model_name: str = "microsoft/deberta-large-mnli",
-        sentence_transformer: str = "all-MiniLM-L6-v2",
+        sentence_transformer: str = "sentence-transformers/all-MiniLM-L6-v2",
         postprocessor: Any = None,
         system_prompt: Optional[str] = None,
         max_calls_per_min: Optional[int] = None,
@@ -68,10 +68,10 @@ class BlackBoxUQ(ShortFormUQ):
             Specifies which NLI model to use. Must be acceptable input to AutoTokenizer.from_pretrained() and
             AutoModelForSequenceClassification.from_pretrained()
 
-        sentence_transformer : str, default="all-MiniLM-L6-v2"
+        sentence_transformer : str, default="sentence-transformers/all-MiniLM-L6-v2"
             Specifies which huggingface sentence transformer to use when computing cosine similarity. See
             https://huggingface.co/sentence-transformers?sort_models=likes#models
-            for more information. The recommended sentence transformer is 'all-MiniLM-L6-v2'.
+            for more information. The recommended sentence transformer is 'sentence-transformers/all-MiniLM-L6-v2'.
 
         postprocessor : callable, default=None
             A user-defined function that takes a string input and returns a string. Used for postprocessing
