@@ -56,7 +56,7 @@ class SampledLogprobsScorer(LogprobsScorer):
 
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. Pass a torch.device to leverage GPU.
-            
+
         sentence_transformer : str (HuggingFace sentence transformer), default='all-MiniLM-L6-v2'
             Specifies which huggingface sentence transformer to use when computing cosine similarity. See
             https://huggingface.co/sentence-transformers?sort_models=likes#models

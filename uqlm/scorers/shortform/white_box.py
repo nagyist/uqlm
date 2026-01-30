@@ -30,7 +30,22 @@ SCORERS_FOR_SCORING_HEADER = ["consistency_and_confidence", "semantic_negentropy
 
 
 class WhiteBoxUQ(ShortFormUQ):
-    def __init__(self, llm: Optional[BaseChatModel] = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, scorers: Optional[List[str]] = None, sampling_temperature: float = 1.0, top_k_logprobs: int = 15, use_n_param: bool = False, length_normalize: bool = True, prompts_in_nli: bool = True, device: Any = None, max_length: int = 2000, sentence_transformer: str = "sentence-transformers/all-MiniLM-L6-v2", nli_model_name: str = "microsoft/deberta-large-mnli") -> None:
+    def __init__(
+        self,
+        llm: Optional[BaseChatModel] = None,
+        system_prompt: Optional[str] = None,
+        max_calls_per_min: Optional[int] = None,
+        scorers: Optional[List[str]] = None,
+        sampling_temperature: float = 1.0,
+        top_k_logprobs: int = 15,
+        use_n_param: bool = False,
+        length_normalize: bool = True,
+        prompts_in_nli: bool = True,
+        device: Any = None,
+        max_length: int = 2000,
+        sentence_transformer: str = "sentence-transformers/all-MiniLM-L6-v2",
+        nli_model_name: str = "microsoft/deberta-large-mnli",
+    ) -> None:
         """
         Class for computing white-box UQ confidence scores. This class offers two confidence scores, normalized
         probability :footcite:`malinin2021uncertaintyestimationautoregressivestructured` and minimum probability :footcite:`manakul2023selfcheckgptzeroresourceblackboxhallucination`.
@@ -71,7 +86,7 @@ class WhiteBoxUQ(ShortFormUQ):
         max_length : int, default=2000
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
-            
+
         sentence_transformer : str, default="sentence-transformers/all-MiniLM-L6-v2"
             Specifies which huggingface sentence transformer to use when computing cosine similarity for consistency_and_confidence. See
             https://huggingface.co/sentence-transformers?sort_models=likes#models
