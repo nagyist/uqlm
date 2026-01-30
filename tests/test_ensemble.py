@@ -202,6 +202,43 @@ async def test_default_logprob(monkeypatch, mock_llm):
     assert list(set(sum(uqe.multiple_logprobs, []))) == [None]
 
 
+def test_all_white_box_scorers_accepted(mock_llm):
+    """Test that UQEnsemble accepts all white-box scorers"""
+    # Test single-generation scorers
+    single_gen_scorers = ["min_probability", "sequence_probability"]
+    for scorer in single_gen_scorers:
+        uqe = UQEnsemble(llm=mock_llm, scorers=[scorer], device="cpu")
+        assert scorer in uqe.white_box_components
+        assert hasattr(uqe, "white_box_object")
+        assert uqe.white_box_object is not None
+
+    # Test top-logprobs scorers
+    top_logprobs_scorers = ["min_token_negentropy", "mean_token_negentropy", "probability_margin"]
+    for scorer in top_logprobs_scorers:
+        uqe = UQEnsemble(llm=mock_llm, scorers=[scorer], device="cpu")
+        assert scorer in uqe.white_box_components
+        assert uqe.white_box_object.scorers == [scorer]
+
+    # Test sampled-logprobs scorers
+    sampled_logprobs_scorers = ["semantic_negentropy", "semantic_density", "monte_carlo_probability", "consistency_and_confidence"]
+    for scorer in sampled_logprobs_scorers:
+        uqe = UQEnsemble(llm=mock_llm, scorers=[scorer], device="cpu")
+        assert scorer in uqe.white_box_components
+        assert uqe.white_box_object.scorers == [scorer]
+
+    # Test p_true scorer
+    uqe = UQEnsemble(llm=mock_llm, scorers=["p_true"], device="cpu")
+    assert "p_true" in uqe.white_box_components
+    assert uqe.white_box_object.scorers == ["p_true"]
+
+    # Test combining different types of white-box scorers
+    combined_scorers = ["sequence_probability", "min_token_negentropy", "monte_carlo_probability", "p_true"]
+    uqe = UQEnsemble(llm=mock_llm, scorers=combined_scorers, device="cpu")
+    assert set(combined_scorers) == set(uqe.white_box_components)
+    assert uqe.white_box_object.llm == mock_llm
+    assert uqe.white_box_object.device == "cpu"
+
+
 def test_print_ensemble_weights(mock_llm):
     """Test that print_ensemble_weights method works correctly"""
 

@@ -21,6 +21,24 @@ DEFAULT_BLACK_BOX_SCORERS = ["semantic_negentropy", "noncontradiction", "exact_m
 BLACK_BOX_SCORERS = DEFAULT_BLACK_BOX_SCORERS + ["bert_score", "entailment", "semantic_sets_confidence"]
 DEFAULT_WHITE_BOX_SCORERS = ["sequence_probability", "min_probability"]
 
+# All white-box scorers - defined directly to avoid circular imports
+ALL_WHITE_BOX_SCORERS = [
+    # Single-generation scorers (normalized_probability is deprecated)
+    "min_probability",
+    "sequence_probability",
+    # Top-logprobs scorers
+    "min_token_negentropy",
+    "mean_token_negentropy",
+    "probability_margin",
+    # Sampled-logprobs scorers
+    "semantic_negentropy",
+    "semantic_density",
+    "monte_carlo_probability",
+    "consistency_and_confidence",
+    # P(True) scorer
+    "p_true",
+]
+
 
 class ShortFormUQ(UncertaintyQuantifier):
     def __init__(self, llm: Any = None, device: Any = None, system_prompt: Optional[str] = None, max_calls_per_min: Optional[int] = None, use_n_param: bool = False, postprocessor: Optional[Any] = None) -> None:
@@ -55,7 +73,7 @@ class ShortFormUQ(UncertaintyQuantifier):
         """
         super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor)
         self.black_box_names = BLACK_BOX_SCORERS
-        self.white_box_names = DEFAULT_WHITE_BOX_SCORERS
+        self.white_box_names = ALL_WHITE_BOX_SCORERS
         self.default_black_box_names = DEFAULT_BLACK_BOX_SCORERS
 
     def _construct_judge(self, llm: Any = None) -> LLMJudge:

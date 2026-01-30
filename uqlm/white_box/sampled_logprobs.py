@@ -27,7 +27,7 @@ SAMPLED_LOGPROBS_SCORER_NAMES = ["semantic_negentropy", "semantic_density", "mon
 
 
 class SampledLogprobsScorer(LogprobsScorer):
-    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm: BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, prompts_in_nli: bool = True, length_normalize: bool = True, device: Any = None) -> None:
+    def __init__(self, scorers: List[str] = SAMPLED_LOGPROBS_SCORER_NAMES, llm: BaseChatModel = None, nli_model_name: str = "microsoft/deberta-large-mnli", max_length: int = 2000, prompts_in_nli: bool = True, length_normalize: bool = True, device: Any = None, sentence_transformer: str = "sentence-transformers/all-MiniLM-L6-v2") -> None:
         """
         Initialize the SampledLogprobsScorer.
 
@@ -56,6 +56,11 @@ class SampledLogprobsScorer(LogprobsScorer):
 
         device: str or torch.device input or torch.device object, default="cpu"
             Specifies the device that NLI model use for prediction. Only applies to 'semantic_negentropy', 'semantic_density' scorers. Pass a torch.device to leverage GPU.
+
+        sentence_transformer : str (HuggingFace sentence transformer), default='all-MiniLM-L6-v2'
+            Specifies which huggingface sentence transformer to use when computing cosine similarity. See
+            https://huggingface.co/sentence-transformers?sort_models=likes#models
+            for more information. The recommended sentence transformer is 'sentence-transformers/all-MiniLM-L6-v2'.
         """
         super().__init__()
         self.scorers = scorers
@@ -66,6 +71,7 @@ class SampledLogprobsScorer(LogprobsScorer):
         self.length_normalize = length_normalize
         self.semantic_negentropy_scorer = None
         self.device = device
+        self.sentence_transformer = sentence_transformer
 
     def evaluate(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], sampled_logprobs_results: Optional[List[List[List[Dict[str, Any]]]]] = None, prompts: List[str] = None, progress_bar: Optional[Progress] = None):
         scores_dict = {}
@@ -80,7 +86,7 @@ class SampledLogprobsScorer(LogprobsScorer):
         return {k: scores_dict[k] for k in self.scorers}
 
     def compute_consistency_confidence(self, responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[Dict[str, Any]]], progress_bar: Optional[Progress] = None) -> List[float]:
-        cosine_scores = CosineScorer().evaluate(responses=responses, sampled_responses=sampled_responses, progress_bar=progress_bar)
+        cosine_scores = CosineScorer(transformer=self.sentence_transformer).evaluate(responses=responses, sampled_responses=sampled_responses, progress_bar=progress_bar)
         score_fn = self._norm_prob if self.length_normalize else self._seq_prob
         response_probs = self._compute_single_generation_scores(logprobs_results, score_fn)
         cocoa_scores = [cs * rp for cs, rp in zip(cosine_scores, response_probs)]
