@@ -35,13 +35,13 @@
 </p>
 <p align="center">
   <a href="https://www.jmlr.org/papers/v27/25-1557.html">
-    <img src="https://img.shields.io/badge/JMLR-Published-112467?style=flat" alt="JMLR Publication">
+    <img src="https://img.shields.io/badge/JMLR-Published-112467?style=flat&style=for-the-badge&logo=semantic-scholar&logoColor=white" alt="JMLR Publication">
   </a>
   <a href="https://openreview.net/pdf?id=WOFspd4lq5">
-    <img src="https://img.shields.io/badge/TMLR-Published-4FA1CA?style=flat" alt="TMLR Publication">
+    <img src="https://img.shields.io/badge/TMLR-Published-4FA1CA?style=flat&logo=semantic-scholar&logoColor=white" alt="TMLR Publication">
   </a>
   <a href="https://arxiv.org/abs/2602.17431">
-    <img src="https://img.shields.io/badge/arXiv-LongTextUQ-B31B1B.svg" alt="arXiv">
+    <img src="https://img.shields.io/badge/arXiv-LongTextUQ-B31B1B?logo=arXiv&logoColor=white" alt="arXiv">
   </a>
 </p>
 
