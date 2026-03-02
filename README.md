@@ -34,14 +34,14 @@
   </a>
 </p>
 <p align="center">
-  <a href="https://arxiv.org/pdf/2507.06196">
-    <img src="https://img.shields.io/badge/JMLR-Published-blue?style=flat" alt="JMLR Publication">
+  <a href="https://www.jmlr.org/papers/v27/25-1557.html">
+    <img src="https://img.shields.io/badge/JMLR-Published-112467?style=flat&style=for-the-badge&logo=semantic-scholar&logoColor=white" alt="JMLR Publication">
   </a>
   <a href="https://openreview.net/pdf?id=WOFspd4lq5">
-    <img src="https://img.shields.io/badge/TMLR-Published-blue?style=flat" alt="TMLR Publication">
+    <img src="https://img.shields.io/badge/TMLR-Published-4FA1CA?style=flat&logo=semantic-scholar&logoColor=white" alt="TMLR Publication">
   </a>
   <a href="https://arxiv.org/abs/2602.17431">
-    <img src="https://img.shields.io/badge/arXiv-2602.17431-B31B1B.svg" alt="arXiv">
+    <img src="https://img.shields.io/badge/arXiv-LongTextUQ-B31B1B?logo=arXiv&logoColor=white" alt="arXiv">
   </a>
 </p>
 
@@ -358,14 +358,15 @@ note={}
 The `uqlm` software package is described in this **[this paper](https://arxiv.org/abs/2507.06196)**, published in the **Journal of Machine Learning Research (JMLR)**. If you use the software, please cite:
 
 ```bibtex
-@misc{bouchard2025uqlmpythonpackageuncertainty,
-      title={UQLM: A Python Package for Uncertainty Quantification in Large Language Models}, 
-      author={Dylan Bouchard and Mohit Singh Chauhan and David Skarbrevik and Ho-Kyeong Ra and Viren Bajaj and Zeya Ahmad},
-      year={2025},
-      eprint={2507.06196},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2507.06196}, 
+@article{JMLR:v27:25-1557,
+  author  = {Dylan Bouchard and Mohit Singh Chauhan and David Skarbrevik and Ho-Kyeong Ra and Viren Bajaj and Zeya Ahmad},
+  title   = {UQLM: A Python Package for Uncertainty Quantification in Large Language Models},
+  journal = {Journal of Machine Learning Research},
+  year    = {2026},
+  volume  = {27},
+  number  = {13},
+  pages   = {1--10},
+  url     = {http://jmlr.org/papers/v27/25-1557.html}
 }
 ```
 

@@ -1,6 +1,6 @@
 [project]
 name = "uqlm"
-version = "0.5.5"
+version = "0.5.6"
 description = "UQLM (Uncertainty Quantification for Language Models) is a Python package for UQ-based LLM hallucination detection."
 readme = "assets/README_PYPI.md"
 license = "Apache-2.0"
@@ -39,7 +39,7 @@ dependencies = [
     "pandas>=2.3.0,<3.0.0",
     "sentence-transformers>=3.4,<6.0",
     "datasets>=3.3.2,<5.0.0",
-    "rich>=13.8.0,<14.0.0",
+    "rich>=13.8.0,<15.0.0",
     "ipywidgets>=8.1.7,<9.0.0",
 ]
 
@@ -62,16 +62,16 @@ docs = [
     "pydata_sphinx_theme==0.16.1",
     "sphinxcontrib-bibtex==2.6.3",
     "sphinx-autodoc-typehints==2.3.0",
-    "sphinx-gallery==0.18.0",
+    "sphinx-gallery==0.20.0",
     "sphinx-favicon==1.0.1",
-    "nbsphinx==0.9.6",
+    "nbsphinx==0.9.8",
 ]
 test = [
     "ipykernel>=6.29.5,<7.0.0",
     "langchain-openai>=0.2.6",
     "pytest>=8.3.5,<9.0.0",
     "langchain-google-vertexai>=2.0.8",
-    "pytest-asyncio>=0.25.3,<1.2.0",
+    "pytest-asyncio>=0.25.3,<1.4.0",
     "pytest-cov>=6,<8",
     "pytest-rerunfailures>=16.0,<17.0",
 ]
