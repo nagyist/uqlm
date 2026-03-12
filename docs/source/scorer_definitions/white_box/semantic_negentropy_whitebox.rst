@@ -26,9 +26,10 @@ Normalized Semantic Negentropy (NSN) is then:
 
 .. math::
 
-    NSN(y_i; \tilde{\mathbf{y}}_i) = 1 - \frac{SE(y_i; \tilde{\mathbf{y}}_i)}{\log m}
+    NSN(y_i; \tilde{\mathbf{y}}_i) = 1 - \frac{SE(y_i; \tilde{\mathbf{y}}_i)}{\log(m+1)}
 
-where :math:`\log m` normalizes the support.
+where :math:`m` is the number of sampled responses and the total number of responses (original plus
+sampled) is :math:`m+1`. The divisor :math:`\log(m+1)` normalizes the support.
 
 **Key Differences from Discrete Version:**
 

@@ -45,8 +45,16 @@ The generalized ensemble can include any combination of:
 
 **White-Box Scorers:**
 
-- ``normalized_probability``
+- ``sequence_probability``
 - ``min_probability``
+- ``min_token_negentropy``
+- ``mean_token_negentropy``
+- ``probability_margin``
+- ``semantic_negentropy``
+- ``semantic_density``
+- ``monte_carlo_probability``
+- ``consistency_and_confidence``
+- ``p_true``
 
 **LLM-as-a-Judge:**
 

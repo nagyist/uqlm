@@ -11,8 +11,10 @@ the computation of semantic entropy and normalizes this count to obtain a confid
 Definition
 ----------
 
-Let :math:`N_C` denote the number of unique semantic clusters and :math:`m` denote the number of
-sampled responses. We normalize this count to obtain a confidence score in :math:`[0,1]` as follows:
+Clustering is performed over the original response plus all sampled responses (the full candidate set).
+Let :math:`N_C` denote the number of unique semantic clusters and :math:`m` denote the total number
+of responses (original plus sampled; e.g. if you sample :math:`k` responses, :math:`m = k+1`).
+We normalize this count to obtain a confidence score in :math:`[0,1]` as follows:
 
 .. math::
 
@@ -20,7 +22,7 @@ sampled responses. We normalize this count to obtain a confidence score in :math
 
 **Interpretation:**
 
-- When :math:`N_C = 1`: All sampled responses are semantically equivalent, so the confidence score is **1**
+- When :math:`N_C = 1`: All responses are semantically equivalent, so the confidence score is **1**
 - When :math:`N_C = m`: All responses are semantically distinct, so the confidence score is **0**
 
 How It Works
