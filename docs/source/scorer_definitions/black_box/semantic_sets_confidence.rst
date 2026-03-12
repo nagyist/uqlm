@@ -63,7 +63,7 @@ References
 ----------
 
 - Lin, Z., et al. (2024). `Generating with Confidence: Uncertainty Quantification for Black-box Large Language Models <https://arxiv.org/abs/2305.19187>`_. *arXiv*.
-- Vashurin, R., et al. (2025). `Benchmarking LLM Uncertainty Quantification Methods for Agentic AI <https://arxiv.org/abs/2406.15627>`_. *arXiv*.
+- Vashurin, R., et al. (2025). `Benchmarking Uncertainty Quantification Methods for Large Language Models with LM-Polygraph <https://arxiv.org/abs/2406.15627>`_. *arXiv*.
 - Kuhn, L., et al. (2023). `Semantic Uncertainty: Linguistic Invariances for Uncertainty Estimation in Natural Language Generation <https://arxiv.org/abs/2302.09664>`_. *arXiv*.
 
 See Also

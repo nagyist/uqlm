@@ -76,7 +76,7 @@ References
 
 - Farquhar, S., et al. (2024). `Detecting hallucinations in large language models using semantic entropy <https://www.nature.com/articles/s41586-024-07421-0>`_. *Nature*.
 - Kuhn, L., et al. (2023). `Semantic Uncertainty: Linguistic Invariances for Uncertainty Estimation in Natural Language Generation <https://arxiv.org/abs/2302.09664>`_. *arXiv*.
-- Bouchard, D. & Chauhan, M. S. (2025). `Generalized Ensembles for Robust Uncertainty Quantification of LLMs <https://arxiv.org/abs/2504.19254>`_. *arXiv*.
+- Bouchard, D. & Chauhan, M. S. (2025). `Uncertainty Quantification for Language Models: A Suite of Black-Box, White-Box, LLM Judge, and Ensemble Scorers <https://arxiv.org/abs/2504.19254>`_. *arXiv*.
 
 See Also
 --------

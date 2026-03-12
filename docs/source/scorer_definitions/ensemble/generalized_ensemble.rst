@@ -148,7 +148,7 @@ Loading a saved configuration:
 References
 ----------
 
-- Bouchard, D. & Chauhan, M. S. (2025). `Generalized Ensembles for Robust Uncertainty Quantification of LLMs <https://arxiv.org/abs/2504.19254>`_. *arXiv*.
+- Bouchard, D. & Chauhan, M. S. (2025). `Uncertainty Quantification for Language Models: A Suite of Black-Box, White-Box, LLM Judge, and Ensemble Scorers <https://arxiv.org/abs/2504.19254>`_. *arXiv*.
 
 See Also
 --------

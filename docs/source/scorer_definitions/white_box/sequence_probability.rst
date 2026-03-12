@@ -61,7 +61,7 @@ Example
 References
 ----------
 
-- Vashurin, R., et al. (2024). `Benchmarking LLM Uncertainty Quantification Methods for Agentic AI <https://arxiv.org/abs/2406.15627>`_. *arXiv*.
+- Vashurin, R., et al. (2024). `Benchmarking Uncertainty Quantification Methods for Large Language Models with LM-Polygraph <https://arxiv.org/abs/2406.15627>`_. *arXiv*.
 
 See Also
 --------
