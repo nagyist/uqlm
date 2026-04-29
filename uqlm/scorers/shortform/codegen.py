@@ -109,13 +109,18 @@ class CodeGenUQ(ShortFormUQ):
 
     async def score(self, prompts: List[str], responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[float]], sampled_logprobs_results: List[List[float]], show_progress_bars: Optional[bool] = True, _display_header: bool = True) -> UQResult:
         data = {"prompts": prompts, "responses": responses, "sampled_responses": sampled_responses}
-        if logprobs_results[0] is not None:
-            data["logprob"] = sampled_logprobs_results
-        if sampled_logprobs_results[0][0] is not None:
+
+        has_logprobs = logprobs_results is not None and logprobs_results[0] is not None
+        has_sampled_logprobs = sampled_logprobs_results is not None and sampled_logprobs_results[0] is not None and sampled_logprobs_results[0][0] is not None
+
+        if has_logprobs:
+            data["logprob"] = logprobs_results
+        if has_sampled_logprobs:
             data["sampled_logprob"] = sampled_logprobs_results
 
         data = {key: val for key, val in data.items() if val}
 
+        self._construct_progress_bar(show_progress_bars)
         self._display_scoring_header(show_progress_bars and _display_header)
 
         # Compute Verbalized Confidence scores
