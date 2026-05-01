@@ -91,7 +91,6 @@ class CodeClusterer:
         # Round 2+: Iteratively cluster remaining responses
         while any(not_yet_clustered_indices):
             # Build new cluster anchors from first non-clustered response in each row
-            print("new round")
             new_anchor_indices = []
             for i in range(n_prompts):
                 if not_yet_clustered_indices[i]:

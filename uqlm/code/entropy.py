@@ -80,8 +80,8 @@ class FunctionalEntropy:
         self.responses = responses
         self.sampled_responses = sampled_responses
         self.num_responses = len(self.sampled_responses[0])
-        self.logprobs = logprobs_results if logprobs_results else self.logprobs
-        self.multiple_logprobs = sampled_logprobs_results if sampled_logprobs_results else self.multiple_logprobs
+        self.logprobs = logprobs_results if logprobs_results else [None] * len(responses)
+        self.multiple_logprobs = sampled_logprobs_results if sampled_logprobs_results else [[None] * len(sampled_responses[0])] * len(responses)
 
         n_prompts = len(self.responses)
         discrete_functional_entropy = [None] * n_prompts
@@ -93,7 +93,10 @@ class FunctionalEntropy:
         original_equivalence_scores = cluster_result["original_equivalence_scores"]
 
         for i in range(n_prompts):
-            candidate_logprobs = [list(self.logprobs[i])] + [list(ml) for ml in self.multiple_logprobs[i]] if (self.logprobs and self.multiple_logprobs) else None
+            candidate_logprobs = None
+            if self.logprobs is not None and self.multiple_logprobs is not None:
+                if self.logprobs[i] is not None and self.multiple_logprobs[i][0] is not None:
+                    candidate_logprobs = [list(self.logprobs[i])] + [list(ml) for ml in self.multiple_logprobs[i]]
             tmp = self._functional_entropy_process(single_prompt_cluster_indices=cluster_indices[i], logprobs_results=candidate_logprobs)
             discrete_functional_entropy[i], tokenprob_functional_entropy[i], num_functional_sets[i] = tmp
 
