@@ -1,22 +1,15 @@
-import os, platform
-import pytest
+# Copyright 2025 CVS Health and/or one of its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
 
-# disable MPS on macOS to prevent all OOM failures.
+# Disable MPS on macOS to prevent OOM failures during local test runs.
+# (PyTorch will fall back to CPU.)
 import torch
 
 if hasattr(torch.backends, "mps"):
     torch.backends.mps.is_available = lambda: False
     torch.backends.mps.is_built = lambda: False
-
-
-HEAVY_TESTS = ["test_blackboxuq", "test_codegen", "test_similarity", "test_sampled_logprobs", "test_longtextuq", "test_longtextqa"]
-
-
-# Automatically Skip ALL transformer-heavy tests
-def pytest_runtest_setup(item):
-    filename = item.location[0]
-    system = platform.system()
-    # Skip on Windows, Linux, and macOS
-    if system in ("Windows", "Linux", "Darwin"):
-        if any(test in filename for test in HEAVY_TESTS):
-            pytest.skip("Skipping heavy transformer tests on all 3 platforms")
