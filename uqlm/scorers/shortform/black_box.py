@@ -19,6 +19,7 @@ from typing import Any, List, Optional, Union
 
 from uqlm.utils.results import UQResult
 from uqlm.black_box import BertScorer, CosineScorer, MatchScorer, ConsistencyScorer
+from uqlm.nli.entropy_utils import normalize_entropy
 from uqlm.scorers.shortform.entropy import SemanticEntropy
 from uqlm.scorers.shortform.baseclass.uncertainty import ShortFormUQ
 
@@ -183,7 +184,7 @@ class BlackBoxUQ(ShortFormUQ):
             self.scorer_objects["semantic_negentropy"].progress_bar = self.progress_bar
             se_tmp = self.scorer_objects["semantic_negentropy"].score(responses=self.responses, sampled_responses=self.sampled_responses, _display_header=False)
             if "semantic_negentropy" in self.scorer_names:
-                self.scores_dict["semantic_negentropy"] = [1 - s for s in self.scorer_objects["semantic_negentropy"]._normalize_entropy(se_tmp.data["discrete_entropy_values"])]  # Convert to confidence score
+                self.scores_dict["semantic_negentropy"] = [1 - ne for ne in normalize_entropy(se_tmp.data["discrete_entropy_values"], num_responses=self.num_responses)]  # Convert to confidence score
             if "semantic_sets_confidence" in self.scorer_names:
                 self.scores_dict["semantic_sets_confidence"] = [(self.num_responses + 1 - s) / self.num_responses for s in se_tmp.data["num_semantic_sets"]]  # Convert to confidence score; max sets = num_responses + 1 (conf=0), min sets = 1 (conf=1)
             available_nli_scores = self.scorer_objects["semantic_negentropy"].clusterer.nli_scores
