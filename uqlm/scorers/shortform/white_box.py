@@ -157,7 +157,7 @@ class WhiteBoxUQ(ShortFormUQ):
         Parameters
         ----------
         logprobs_results : list of logprobs_result
-            List of dictionaries, each returned by BaseChatModel.agenerate
+            List of dictionaries, each returned by BaseChatModel.ainvoke
 
         prompts : list of str, default=None
             A list of input prompts for the model. Required only for "p_true" scorer.
@@ -170,7 +170,7 @@ class WhiteBoxUQ(ShortFormUQ):
             the corresponding response from `responses`. Required for "monte_carlo_probability", "consistency_and_confidence", "semantic_negentropy", "semantic_density" scorers.
 
         sampled_logprobs_results : list of lists of logprobs_result
-            List of list of dictionaries, each returned by BaseChatModel.agenerate corresponding to sampled_responses. Required only for "monte_carlo_probability", "semantic_negentropy", "semantic_density" scorers.
+            List of list of dictionaries, each returned by BaseChatModel.ainvoke corresponding to sampled_responses. Required only for "monte_carlo_probability", "semantic_negentropy", "semantic_density" scorers.
 
         show_progress_bars : bool, default=True
             If True, displays a progress bar while scoring responses
@@ -222,7 +222,7 @@ class WhiteBoxUQ(ShortFormUQ):
         if self.single_logprobs_scorer_names:
             self.single_logprobs_scorer = SingleLogprobsScorer(scorers=self.single_logprobs_scorer_names, length_normalize=self.length_normalize)
         if self.top_logprobs_scorer_names:
-            self.top_logprobs_scorer = TopLogprobsScorer(scorers=self.top_logprobs_scorer_names)
+            self.top_logprobs_scorer = TopLogprobsScorer(scorers=self.top_logprobs_scorer_names, top_k_logprobs=top_k_logprobs)
             self.top_k_logprobs = top_k_logprobs
             beta_warning("Scorers based on top_logprobs ('mean_token_negentropy','min_token_negentropy','probability_margin') is in beta. Please use with caution as it may change in future releases.")
         if self.sampled_logprobs_scorer_names:

@@ -1,10 +1,18 @@
-from typing import Any, List, Optional
+from typing import List, Optional
 from langchain_core.language_models.chat_models import BaseChatModel
+import numpy as np
 from uqlm.code import CodeBLEU, VerbalizedConfidence, FunctionalEntropy
 from uqlm.black_box import CosineScorer
 from uqlm.scorers.shortform.white_box import WhiteBoxUQ
 from uqlm.utils.results import UQResult
 from uqlm.scorers.shortform.baseclass.uncertainty import ShortFormUQ
+
+
+DEFAULT_SCORERS = ["functional_equivalence_rate", "cosine_sim"]
+WHITE_BOX_SCORERS = ["sequence_probability", "min_probability", "mean_token_negentropy", "min_token_negentropy", "probability_margin", "p_true", "consistency_and_confidence", "monte_carlo_probability"]
+FUNCTIONAL_EQUIVALENCE_SCORERS = ["functional_negentropy", "functional_sets_confidence", "functional_equivalence_rate"]
+OTHER_SCORERS = ["cosine_sim", "code_bleu", "verbalized_confidence"]
+ALL_SCORERS = WHITE_BOX_SCORERS + OTHER_SCORERS + FUNCTIONAL_EQUIVALENCE_SCORERS
 
 
 class CodeGenUQ(ShortFormUQ):
@@ -18,7 +26,6 @@ class CodeGenUQ(ShortFormUQ):
         sampling_temperature: float = 1.0,
         top_k_logprobs: int = 15,
         length_normalize: bool = True,
-        device: Any = None,
         max_length: int = 2000,
         sentence_transformer: str = "jinaai/jina-embeddings-v2-base-code",
         language: str = "python",
@@ -34,7 +41,10 @@ class CodeGenUQ(ShortFormUQ):
             temperature and other relevant parameters to the constructor of their `llm` object.
 
         scorers : List[str], default=None
-            Specifies which scorers to include. Must be subset of ["sequence_probability", "min_probability", "mean_token_negentropy", "min_token_negentropy", "probability_margin", "p_true", "consistency_and_confidence", "monte_carlo_probability", "codebleu", "code_equivalence", "verbalized_confidence", "functional_entropy", "semantic_sets", "cosine_sim"]. If None, defaults to all scorers.
+            Specifies which scorers to include. Must be subset of ["sequence_probability", "min_probability", "mean_token_negentropy",
+            "min_token_negentropy", "probability_margin", "p_true", "consistency_and_confidence", "monte_carlo_probability", "code_bleu",
+            "functional_equivalence_rate", "verbalized_confidence", "functional_negentropy", "functional_sets_confidence", "cosine_sim"].
+            If None, defaults to ["functional_equivalence_rate", "cosine_sim"].
 
         equivalence_llm : BaseChatModel, default=None
             A langchain llm object to get passed to chain constructor. This is used for CodeEquivalence and FunctionalEntropy scorers. User is responsible for specifying
@@ -57,10 +67,6 @@ class CodeGenUQ(ShortFormUQ):
         length_normalize : bool, default=True
             Specifies whether to length normalize the logprobs.
 
-        device : Any, default=None
-            Specifies the device that NLI model use for prediction. If None, detects and returns the best available PyTorch device.
-            Prioritizes CUDA (NVIDIA GPU), then MPS (macOS), then CPU.
-
         max_length : int, default=2000
             Specifies the maximum allowed string length. Responses longer than this value will be truncated to
             avoid OutOfMemoryError
@@ -71,7 +77,7 @@ class CodeGenUQ(ShortFormUQ):
             for more information. The recommended sentence transformer is 'jinaai/jina-embeddings-v2-base-code'.
 
         language : str, default="python"
-            Specifies the language of the code, this is used while computing CodeBleu and CodeEquivalence scores (if "codebleu" or "code_equivalence" is in scorers).
+            Specifies the language of the code, this is used while computing CodeBleu and CodeEquivalence scores (if "codebleu" or "functional_equivalence_rate" is in scorers).
             This might require user to install additional dependencies. Must be one of ["python", "java", "sql"].
 
         retries : int, default=5
@@ -87,19 +93,35 @@ class CodeGenUQ(ShortFormUQ):
         self.language = language
         self.equivalence_llm = equivalence_llm if equivalence_llm else llm
         self.retries = retries
+        self.generation_type = "default"
         self._validate_scorers()
 
-    async def generate_and_score(self, prompts: List[str], num_responses: Optional[int] = 5) -> UQResult:
-        self._construct_progress_bar(True)
-        self.llm.logprobs = True
+    async def generate_and_score(self, prompts: List[str], num_responses: Optional[int] = 5, show_progress_bars: Optional[bool] = True) -> UQResult:
+        # self._construct_progress_bar(True)
+        self._construct_progress_bar(show_progress_bars)
+        self._display_generation_header(show_progress_bars, generation_type=self.generation_type)
+        if self.wbuq_scorers:
+            self.llm.logprobs = True
         self.responses = await self.generate_original_responses(prompts, top_k_logprobs=self.top_k_logprobs, progress_bar=self.progress_bar)
         self.sampled_responses = await self.generate_candidate_responses(prompts=prompts, num_responses=num_responses, progress_bar=self.progress_bar)
-        results = await self.score(prompts=prompts, responses=self.responses, sampled_responses=self.sampled_responses, logprobs_results=self.logprobs, sampled_logprobs_results=self.multiple_logprobs)
+        results = await self.score(prompts=prompts, responses=self.responses, sampled_responses=self.sampled_responses, logprobs_results=self.logprobs, sampled_logprobs_results=self.multiple_logprobs, show_progress_bars=show_progress_bars)
         return results
 
-    async def score(self, prompts: List[str], responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[float]], sampled_logprobs_results: List[List[float]]) -> UQResult:
-        data = {"prompts": prompts, "responses": responses, "logprob": logprobs_results, "sampled_responses": sampled_responses, "sampled_logprob": sampled_logprobs_results}
+    async def score(self, prompts: List[str], responses: List[str], sampled_responses: List[List[str]], logprobs_results: List[List[float]], sampled_logprobs_results: List[List[float]], show_progress_bars: Optional[bool] = True, _display_header: bool = True) -> UQResult:
+        data = {"prompts": prompts, "responses": responses, "sampled_responses": sampled_responses}
+
+        has_logprobs = logprobs_results is not None and logprobs_results[0] is not None
+        has_sampled_logprobs = sampled_logprobs_results is not None and sampled_logprobs_results[0] is not None and sampled_logprobs_results[0][0] is not None
+
+        if has_logprobs:
+            data["logprob"] = logprobs_results
+        if has_sampled_logprobs:
+            data["sampled_logprob"] = sampled_logprobs_results
+
         data = {key: val for key, val in data.items() if val}
+
+        self._construct_progress_bar(show_progress_bars)
+        self._display_scoring_header(show_progress_bars and _display_header)
 
         # Compute Verbalized Confidence scores
         if "verbalized_confidence" in self.scorers:
@@ -107,13 +129,12 @@ class CodeGenUQ(ShortFormUQ):
 
         # Compute Cosine Similarity
         if "cosine_sim" in self.scorers:
-            data["cosine_sim"] = self.cos.evaluate(responses=responses, sampled_responses=sampled_responses)
-            data["cosine_sim_pair_score"] = self.cos.pair_scores
+            data["cosine_sim"] = self.cos.evaluate(responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
 
         # Compute White-box UQ scores
         if len(self.wbuq_scorers) > 0:
             self.wbuq.progress_bar = self.progress_bar
-            self.wb_results = await self.wbuq.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results)
+            self.wb_results = await self.wbuq.score(prompts=prompts, responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, _display_header=False)
             for key in self.wb_results.data:
                 if key in self.scorers:
                     data[key] = self.wb_results.data[key]
@@ -123,55 +144,45 @@ class CodeGenUQ(ShortFormUQ):
 
         # Compute Code BLEU confidence scores
         if "codebleu" in self.scorers:
-            data["codebleu"] = self.cb.evaluate(responses=responses, sampled_responses=sampled_responses)
-            data["code_bleu_pair_score"] = self.cb.pair_scores
+            data["codebleu"] = self.cb.evaluate(responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
 
         # Compute Functional Entropy scores
-        if "functional_entropy" in self.scorers:
-            fe_results = await self.fe.evaluate(responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results)
-            data["semantic_entropy"] = fe_results.data["discrete_confidence_scores"]
-            data["tokenprob_semantic_entropy"] = fe_results.data["tokenprob_confidence_scores"]
-            if "semantic_sets" in self.scorers:
-                data["num_semantic_sets"] = fe_results.data["num_semantic_sets"]
-            data["functional_entropy_equivalence_indicators"] = self.fe.equivalence_indicators
+        if self.functional_equivalence_scorers == ["functional_equivalence_rate"]:
+            fe_scores = await self.fe.clusterer.get_equivalence_scores(responses=responses, sampled_responses=sampled_responses, progress_bar=self.progress_bar)
+            data["functional_equivalence_rate"] = [np.mean(s) for s in fe_scores]
 
-            data["semantic_negentropy"] = fe_results.data["discrete_confidence_scores"]
-            data["semantic_negentropy_whitebox"] = fe_results.data["tokenprob_confidence_scores"]
-            if "semantic_sets" in self.scorers:
-                data["semantic_sets_confidence"] = fe_results.data["semantic_sets_confidence"]
-                data["cluster_indices"] = fe_results.data["cluster_indices"]
-            if "code_equivalence" in self.scorers:
-                data["equivalence_rate"] = fe_results.data["equivalence_rate"]
-                data["original_equivalence_scores"] = fe_results.data["original_equivalence_scores"]
+        elif self.functional_equivalence_scorers:
+            fe_results = await self.fe.evaluate(responses=responses, sampled_responses=sampled_responses, logprobs_results=logprobs_results, sampled_logprobs_results=sampled_logprobs_results, progress_bar=self.progress_bar)
+            for scorer in self.functional_equivalence_scorers:
+                data[scorer] = fe_results[scorer]
+            if "functional_negentropy_whitebox" in fe_results:
+                data["functional_negentropy_whitebox"] = fe_results["functional_negentropy_whitebox"]
+
+        self._stop_progress_bar()
+        self.progress_bar = None  # if re-run ensure the same progress object is not used
+
         return UQResult(result={"data": data})
 
     def _validate_scorers(self):
-        default_white_box_scorers = ["sequence_probability", "min_probability", "mean_token_negentropy", "min_token_negentropy", "probability_margin", "p_true", "consistency_and_confidence", "monte_carlo_probability"]
-        default_judge_scorers = ["code_equivalence", "codebleu", "verbalized_confidence"]
-        deafult_black_box_scorers = ["functional_entropy", "semantic_sets", "cosine_sim"]
         if not self.scorers:
-            self.scorers = default_white_box_scorers + default_judge_scorers + deafult_black_box_scorers
+            self.scorers = DEFAULT_SCORERS
 
-        self.wbuq_scorers = []
-        for scorer in self.scorers:
-            if scorer in default_white_box_scorers:
-                if scorer == "consistency_and_confidence":
-                    if "cosine_sim" in self.scorers and "sequence_probability" in self.scorers:
-                        continue
-                    elif "cosine_sim" in self.scorers:
-                        self.wbuq_scorers.append("sequence_probability")
-                    else:
-                        if "cosine_sim" not in self.scorers:
-                            self.scorers.append("cosine_sim")
-                self.wbuq_scorers.append(scorer)
+        if not set(self.scorers).issubset(set(ALL_SCORERS)):
+            raise ValueError(f"Invalid scorers: {list(set(self.scorers) - set(ALL_SCORERS))}")
 
-        if len(self.wbuq_scorers) > 0:
-            self.wbuq = WhiteBoxUQ(llm=self.llm, scorers=self.wbuq_scorers, system_prompt=self.system_prompt, max_calls_per_min=self.max_calls_per_min, sampling_temperature=self.sampling_temperature, top_k_logprobs=self.top_k_logprobs, length_normalize=self.length_normalize, prompts_in_nli=False, sentence_transformer=self.sentence_transformer)
+        if "consistency_and_confidence" in self.scorers:
+            self.scorers = list(set(self.scorers) & set(["cosine_sim", "sequence_probability"]))
         if "codebleu" in self.scorers:
             self.cb = CodeBLEU(language=self.language)
         if "verbalized_confidence" in self.scorers:
             self.vc = VerbalizedConfidence(llm=self.llm, max_calls_per_min=self.max_calls_per_min)
-        if "functional_entropy" in self.scorers:
-            self.fe = FunctionalEntropy(equivalence_llm=self.equivalence_llm, system_prompt=self.system_prompt, length_normalize=self.length_normalize, language=self.language, retries=self.retries)
         if "cosine_sim" in self.scorers:
             self.cos = CosineScorer(transformer=self.sentence_transformer, max_length=self.max_length)
+
+        self.wbuq_scorers = list(set(WHITE_BOX_SCORERS) & set(self.scorers))
+        if len(self.wbuq_scorers) > 0:
+            self.wbuq = WhiteBoxUQ(llm=self.llm, scorers=self.wbuq_scorers, system_prompt=self.system_prompt, max_calls_per_min=self.max_calls_per_min, sampling_temperature=self.sampling_temperature, top_k_logprobs=self.top_k_logprobs, length_normalize=self.length_normalize, prompts_in_nli=False, sentence_transformer=self.sentence_transformer)
+
+        self.functional_equivalence_scorers = list(set(FUNCTIONAL_EQUIVALENCE_SCORERS) & set(self.scorers))
+        if self.functional_equivalence_scorers:
+            self.fe = FunctionalEntropy(equivalence_llm=self.equivalence_llm, system_prompt=self.system_prompt, length_normalize=self.length_normalize, language=self.language, retries=self.retries)

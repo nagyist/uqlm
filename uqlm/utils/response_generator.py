@@ -22,10 +22,18 @@ import numpy as np
 from rich.progress import Progress
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
-from uqlm.utils.warn import beta_warning
+from uqlm.utils.warn import beta_warning, deprecation_warning
 
 
-generator_type_to_progress_msg = {"judge": "Scoring responses with LLM-as-a-Judge", "original": "Generating responses", "p_true": "Scoring responses with P(True)", "grader": "Grading responses against provided ground truth answers", "factscore_grader": "Grading claims/sentences against Wikipedia texts", "question_generator": "Generating questions for each claim/sentence"}
+generator_type_to_progress_msg = {
+    "judge": "Scoring responses with LLM-as-a-Judge",
+    "original": "Generating responses",
+    "p_true": "Scoring responses with P(True)",
+    "verbalized_confidence": "Scoring responses with verbalized confidence",
+    "grader": "Grading responses against provided ground truth answers",
+    "factscore_grader": "Grading claims/sentences against Wikipedia texts",
+    "question_generator": "Generating questions for each claim/sentence",
+}
 
 
 class ResponseGenerator:
@@ -54,6 +62,9 @@ class ResponseGenerator:
         self.generator_type_to_progress_msg = generator_type_to_progress_msg
         self.response_generator_type = "original"
         self.top_k_logprobs = top_k_logprobs
+
+        if self.use_n_param:
+            deprecation_warning("The `use_n_param` option is deprecated and will not be used to generate responses.")
 
     async def generate_responses(self, prompts: List[Union[str, List[BaseMessage]]], system_prompt: Optional[str] = None, count: int = 1, progress_bar: Optional[Progress] = None) -> Dict[str, Any]:
         """
@@ -121,17 +132,12 @@ class ResponseGenerator:
         with each prompt duplicated `count` times
         """
         duplicated_prompts = [prompt for prompt, i in itertools.product(prompts, range(self.count))]
-        if self.use_n_param:
-            tasks = [self._async_api_call(prompt=prompt, count=self.count) for prompt in prompts]
-        else:
-            tasks = [self._async_api_call(prompt=prompt, count=1) for prompt in duplicated_prompts]
+        tasks = [self._async_api_call(prompt=prompt, count=1) for prompt in duplicated_prompts]
         return tasks, duplicated_prompts
 
     def _update_count(self, count: int) -> None:
         """Updates self.count parameter and self.llm as necessary"""
         self.count = count
-        if self.use_n_param:
-            self.llm.n = count
 
     async def _generate_in_batches(self, prompts: List[Union[str, List[BaseMessage]]], progress_bar: Optional[bool] = True) -> Tuple[Dict[str, List[Any]], List[str]]:
         """Executes async IO with langchain in batches to avoid rate limit error"""
@@ -192,51 +198,57 @@ class ResponseGenerator:
             raise ValueError("prompts must be list of strings or list of lists of BaseMessage instances. For support with LangChain BaseMessage usage, refer here: https://python.langchain.com/docs/concepts/messages")
 
         if not self.top_k_logprobs:
-            result = await self.llm.agenerate([messages])
+            result = await self.llm.ainvoke(messages)
             logprobs = [None] * count
             if hasattr(self.llm, "logprobs"):
                 if self.llm.logprobs:
                     logprobs = self._extract_logprobs(logprobs=logprobs, result=result, count=count)
-            result_dict = {"logprobs": logprobs, "responses": [result.generations[0][i].text for i in range(count)]}
+            result_dict = {"logprobs": logprobs, "responses": [result.content]}
         else:
-            result_dict = await self.agenerate_with_top_logprobs(messages, count=count)
+            result_dict = await self.ainvoke_with_top_logprobs(messages, count=count)
         if self.progress_bar:
             for _ in range(count):
                 self.progress_bar.update(self.progress_task, advance=1)
         return result_dict
 
-    async def agenerate_with_top_logprobs(self, messages: List[BaseMessage], count: int) -> Any:
-        """Use agenerate method with top_logprobs configured"""
+    async def ainvoke_with_top_logprobs(self, messages: List[BaseMessage], count: int) -> Any:
+        """Use ainvoke method with top_logprobs configured"""
         logprobs = [None] * count
         result = None
         if "openai" in self.llm.__str__().lower():
-            result = await self.llm.agenerate([messages], logprobs=True, top_logprobs=self.top_k_logprobs)
+            result = await self.llm.ainvoke(messages, logprobs=True, top_logprobs=self.top_k_logprobs)
         elif "google" in self.llm.__str__().lower() or "gemini" in self.llm.__str__().lower():
             self.llm.logprobs = self.top_k_logprobs
-            result = await self.llm.agenerate([messages])
+            result = await self.llm.ainvoke(messages)
         else:
             try:
-                result = await self.llm.agenerate([messages], logprobs=True, top_logprobs=self.top_k_logprobs)
+                result = await self.llm.ainvoke(messages, logprobs=True, top_logprobs=self.top_k_logprobs)
             except Exception:
                 try:
                     self.llm.logprobs = self.top_k_logprobs
-                    result = await self.llm.agenerate([messages])
+                    result = await self.llm.ainvoke(messages)
                 except Exception:
                     pass
         if result is None:  # if all attempts fail
             return {"logprobs": [None] * count, "responses": []}
         logprobs = self._extract_logprobs(logprobs=logprobs, result=result, count=count)
-        return {"logprobs": logprobs, "responses": [result.generations[0][i].text for i in range(count)]}
+        return {"logprobs": logprobs, "responses": [result.content]}
 
     @staticmethod
     def _extract_logprobs(logprobs: Any, result: Any, count: int):
         for i in range(count):
-            if "logprobs_result" in result.generations[0][i].generation_info:
-                logprobs[i] = result.generations[0][i].generation_info["logprobs_result"]
+            if "logprobs_result" in result.response_metadata:
+                logprobs[i] = result.response_metadata["logprobs_result"]
+            elif "logprobs" in result.response_metadata:
+                raw = result.response_metadata["logprobs"]
+                if "token_logprobs" in raw:
+                    top_lp_list = raw.get("top_logprobs", [])
+                    if len(top_lp_list) != len(raw["token_logprobs"]):
+                        top_lp_list = [None] * len(raw["token_logprobs"])
+                    logprobs[i] = [{"token": t, "logprob": lp, "top_logprobs": [] if tlp is None else [{"token": t_, "logprob": lp_} for t_, lp_ in tlp.items()]} for t, lp, tlp in zip(raw["tokens"], raw["token_logprobs"], top_lp_list)]
 
-            elif "logprobs" in result.generations[0][i].generation_info:
-                if "content" in result.generations[0][i].generation_info["logprobs"]:
-                    logprobs[i] = result.generations[0][i].generation_info["logprobs"]["content"]
+                elif "content" in raw:
+                    logprobs[i] = raw["content"]
             else:
                 warnings.warn("Model did not provide logprobs in API response. White-box scores for this response may be set to np.nan.")
                 logprobs[i] = [{"token": "UNABLE TO GET LOGPROBS", "logprob": np.nan, "top_logprobs": []}]
