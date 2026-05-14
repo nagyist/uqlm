@@ -137,3 +137,14 @@ def test_length_norm_sequence_prob():
 def test_normalize_cluster_probabilities():
     res = normalize_cluster_probabilities([2, 2])
     assert res == [0.5, 0.5]
+
+
+# Regression: non-uniform sampled_responses lengths must raise (bug #12)
+
+
+@pytest.mark.asyncio
+async def test_evaluate_rejects_nonuniform_samples(fe, fake_clusterer):
+    """If different prompts have different numbers of samples, evaluate() must raise instead of silently using row 0's length."""
+    fe.clusterer = fake_clusterer
+    with pytest.raises(ValueError):
+        await fe.evaluate(responses=["A", "B"], sampled_responses=[["x", "y"], ["z"]])
