@@ -183,3 +183,17 @@ async def test_get_equivalence_responses(clusterer):
     result = await clusterer._get_equivalence_responses(pairs)
 
     assert result == [1.0, 0.0, 1.0]
+
+
+# Regression: NaN scores must NOT be treated as equivalent (bug #4)
+
+
+@pytest.mark.asyncio
+async def test_evaluate_nan_score_not_clustered(clusterer):
+    """A NaN equivalence score means 'unparseable'; the sample must land in its own cluster, not the anchor's."""
+    clusterer.get_equivalence_scores = AsyncMock(return_value=[[float("nan")]])
+
+    result = await clusterer.evaluate(["A"], [["A1"]])
+
+    # anchor (0) and sample (1) must end up in different clusters
+    assert result["cluster_indices"][0] == [[0], [1]]

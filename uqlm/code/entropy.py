@@ -80,8 +80,10 @@ class FunctionalEntropy:
         self.responses = responses
         self.sampled_responses = sampled_responses
         self.num_responses = len(self.sampled_responses[0])
+        if any(len(s) != self.num_responses for s in self.sampled_responses):
+            raise ValueError("All prompts must have the same number of sampled responses")
         self.logprobs = logprobs_results if logprobs_results else [None] * len(responses)
-        self.multiple_logprobs = sampled_logprobs_results if sampled_logprobs_results else [[None] * len(sampled_responses[0])] * len(responses)
+        self.multiple_logprobs = sampled_logprobs_results if sampled_logprobs_results else [[None] * len(sampled_responses[0]) for _ in range(len(responses))]
 
         n_prompts = len(self.responses)
         discrete_functional_entropy = [None] * n_prompts
