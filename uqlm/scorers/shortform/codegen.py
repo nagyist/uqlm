@@ -141,8 +141,6 @@ class CodeGenUQ(ShortFormUQ):
                     data[key] = self.wb_results.data[key]
 
         if "consistency_and_confidence" in self.scorers:
-            if "cosine_sim" not in data or "sequence_probability" not in data:
-                raise ValueError("consistency_and_confidence requires both 'cosine_sim' and 'sequence_probability' to be computed")
             data["consistency_and_confidence"] = [data["cosine_sim"][i] * data["sequence_probability"][i] for i in range(len(prompts))]
 
         # Compute Code BLEU confidence scores

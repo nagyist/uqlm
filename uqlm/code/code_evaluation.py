@@ -108,7 +108,7 @@ def sanitize_llm_output(raw: str) -> str:
     return stripped
 
 
-def ensure_list_of_dicts(x: "str | list") -> list:
+def ensure_list_of_dicts(x: str | list) -> list:
     """
     Different dataset rows may express test cases in slightly different formats. To ensure uniformity, this function converts values like `public_test_cases` into proper Python lists, safely handling cases where the value is stored as a JSON string instead of a list.
 
