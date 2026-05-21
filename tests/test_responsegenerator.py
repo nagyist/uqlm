@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-from re import M
 import pytest
 import asyncio
 from langchain_openai import AzureChatOpenAI
@@ -345,4 +344,3 @@ async def test_ainvoke_with_top_logprobs_exception_handling():
     assert "responses" in result
     assert result["logprobs"] == [None]
     assert result["responses"] == []
-
