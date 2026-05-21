@@ -23,7 +23,7 @@ from rich.errors import LiveError
 from uqlm.utils.response_generator import ResponseGenerator
 from uqlm.nli.nli import NLI
 from uqlm.utils.display import ConditionalBarColumn, ConditionalTimeElapsedColumn, ConditionalTextColumn, ConditionalSpinnerColumn
-from uqlm.utils.warn import deprecation_warning
+from uqlm.utils.warn import beta_warning, deprecation_warning
 
 
 class UncertaintyQuantifier:
@@ -74,6 +74,8 @@ class UncertaintyQuantifier:
         self.progress_bar = None
         self.raw_responses = None
         self.raw_sampled_responses = None
+
+        self._validate_structured_output_parameters()
 
         if self.use_n_param:
             deprecation_warning("The `use_n_param` option is deprecated and will not be used to generate responses.")
@@ -160,6 +162,14 @@ class UncertaintyQuantifier:
                 progress_bar.stop()
             raise
         return {"responses": generations["data"]["response"], "logprobs": generations["metadata"]["logprobs"]}
+
+    def _validate_structured_output_parameters(self) -> None:
+        if self.structured_response and not self.output_extractor:
+            raise ValueError("If `structured_response` is specified, `output_extractor` must also be specified.")
+        if self.output_extractor and not self.structured_response:
+            raise ValueError("If `output_extractor` is specified, `structured_response` must also be specified.")
+        if self.structured_response and self.output_extractor:
+            beta_warning("Use of structured_response and output_extractor is in beta. Please use with caution as implementation may change in future releases.")
 
     def _setup_nli(self, nli_model_name: Any) -> None:
         """Set up NLI model"""

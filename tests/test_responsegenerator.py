@@ -165,6 +165,7 @@ async def test_generate_in_batches_progress_bar():
     await generator._generate_in_batches(prompts=prompts, progress_bar=mock_progress)
     mock_progress.add_task.assert_called_with(f"  - Generating candidate responses ({generator.count} per prompt)...", total=len(prompts) * generator.count)
 
+
 @pytest.mark.asyncio
 async def test_structured_outputs():
     """Test that structured_response and output_extractor parameters are validated and work together."""
