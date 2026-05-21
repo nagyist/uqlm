@@ -58,10 +58,10 @@ class UncertaintyQuantifier:
             outputs.
 
         structured_response : Any, default=None
-            If specified, should be a structure such as a pydantic BaseModel class or dict that will be applied to the llm in the as `llm.with_structured_output(structured_response)`. Only used if `output_extractor` is also specified.
+            Specifies a structure such as a pydantic BaseModel class or a dict that is applied to the llm as `llm.with_structured_output(structured_response)`. Only used if `output_extractor` is not None.
 
         output_extractor : callable, default=None
-            A user-defined function that takes the output of `structured_llm` and extracts the response. Only used if `structured_response` is not None.
+            A user-defined function that is called on the output of an llm with structured output to extract the response. Only used if `structured_response` is not None.
         """
         self.llm = llm
         self.device = device

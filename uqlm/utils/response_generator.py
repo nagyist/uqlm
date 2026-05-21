@@ -47,10 +47,10 @@ class ResponseGenerator:
             `BaseChatModel` classes. If used, it speeds up the generation process substantially when count > 1.
 
         structured_response : Any, default=None
-            If specified, should be a structure such as a pydantic BaseModel class or dict that will be applied to the llm in the as `llm.with_structured_output(structured_response)`. Only used if `output_extractor` is also specified.
+            Specifies a structure such as a pydantic BaseModel class or a dict that is applied to the llm as `llm.with_structured_output(structured_response)`. Only used if `output_extractor` is not None.
 
         output_extractor : callable, default=None
-            A user-defined function that takes the output of `structured_llm` and extracts the response. Only used if `structured_response` is not None.
+            A user-defined function that is called on the output of an llm with structured output to extract the response. Only used if `structured_response` is not None.
         """
         self.llm = llm
         self.use_n_param = use_n_param
@@ -62,6 +62,8 @@ class ResponseGenerator:
         self.top_k_logprobs = top_k_logprobs
         self.structured_response = structured_response
         self.output_extractor = output_extractor
+
+        self._validate_structured_output_parameters()
 
         if self.use_n_param:
             deprecation_warning("The `use_n_param` option is deprecated and will not be used to generate responses.")
@@ -126,6 +128,13 @@ class ResponseGenerator:
         logprobs = generations["logprobs"]
         return {"data": {"prompt": self._enforce_strings(duplicated_prompts), "response": self._enforce_strings(responses)}, "metadata": {"system_prompt": system_prompt, "temperature": self.llm.temperature, "count": self.count, "logprobs": logprobs}}
 
+    def _validate_structured_output_parameters(self) -> None:
+        if self.structured_response and not self.output_extractor:
+            raise ValueError("If `structured_response` is specified, `output_extractor` must also be specified.")
+        if self.output_extractor and not self.structured_response:
+            raise ValueError("If `output_extractor` is specified, `structured_response` must also be specified.")
+        beta_warning("Use of structured_response and output_extractor is in beta. Please use with caution as implementation may change in future releases.")
+    
     def _create_tasks(self, prompts: List[Union[str, List[BaseMessage]]]) -> Tuple[List[Any], List[str]]:
         """
         Creates a list of async tasks and returns duplicated prompt list
