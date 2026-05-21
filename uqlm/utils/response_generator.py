@@ -135,7 +135,7 @@ class ResponseGenerator:
             raise ValueError("If `output_extractor` is specified, `structured_response` must also be specified.")
         if self.structured_response and self.output_extractor:
             beta_warning("Use of structured_response and output_extractor is in beta. Please use with caution as implementation may change in future releases.")
-    
+
     def _create_tasks(self, prompts: List[Union[str, List[BaseMessage]]]) -> Tuple[List[Any], List[str]]:
         """
         Creates a list of async tasks and returns duplicated prompt list
