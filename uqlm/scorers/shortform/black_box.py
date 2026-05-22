@@ -34,6 +34,8 @@ class BlackBoxUQ(ShortFormUQ):
         nli_model_name: str = "microsoft/deberta-large-mnli",
         sentence_transformer: str = "sentence-transformers/all-MiniLM-L6-v2",
         postprocessor: Any = None,
+        structured_response: Optional[Any] = None,
+        output_extractor: Optional[Any] = None,
         system_prompt: Optional[str] = None,
         max_calls_per_min: Optional[int] = None,
         sampling_temperature: float = 1.0,
@@ -78,6 +80,12 @@ class BlackBoxUQ(ShortFormUQ):
             A user-defined function that takes a string input and returns a string. Used for postprocessing
             outputs before black-box comparisons.
 
+        structured_response : Any, default=None
+            Specifies a structure such as a pydantic BaseModel class or a dict that is applied to the llm as `llm.with_structured_output(structured_response)`. Only used if `output_extractor` is not None.
+
+        output_extractor : callable, default=None
+            A user-defined function that is called on the output of an llm with structured output to extract the response. Only used if `structured_response` is not None.
+
         return_responses : str, default="all"
             If a postprocessor is used, specifies whether to return only postprocessed responses, only raw responses,
             or both. Specified with 'postprocessed', 'raw', or 'all', respectively.
@@ -104,7 +112,7 @@ class BlackBoxUQ(ShortFormUQ):
         verbose : bool, default=False
             Specifies whether to print the index of response currently being scored.
         """
-        super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor)
+        super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor, structured_response=structured_response, output_extractor=output_extractor)
         self.prompts = None
         self.max_length = max_length
         self.verbose = verbose
