@@ -32,6 +32,9 @@
   <a href="https://github.com/astral-sh/ruff">
     <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff">
   </a>
+  <a href="https://discord.gg/RjcrAPw43H">
+    <img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white" alt="Discord">
+  </a>
 </p>
 <p align="center">
   <a href="https://www.jmlr.org/papers/v27/25-1557.html">
