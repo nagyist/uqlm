@@ -16,6 +16,8 @@ It takes a lot of time and effort to use software much less build upon it, so we
 
 ## How to Contribute
 
+For quick questions or community discussion, join our [Discord](https://discord.gg/RjcrAPw43H). For bug reports and feature requests, please use GitHub issues as described below.
+
 ### Reporting Bugs
 
 If you find a bug, please report it by opening an issue on GitHub. Include as much detail as possible:
