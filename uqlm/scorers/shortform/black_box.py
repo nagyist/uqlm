@@ -19,6 +19,7 @@ from typing import Any, List, Optional, Union
 
 from uqlm.utils.results import UQResult
 from uqlm.black_box import BertScorer, CosineScorer, MatchScorer, ConsistencyScorer
+from uqlm.nli.entropy_utils import normalize_entropy
 from uqlm.scorers.shortform.entropy import SemanticEntropy
 from uqlm.scorers.shortform.baseclass.uncertainty import ShortFormUQ
 
@@ -33,6 +34,8 @@ class BlackBoxUQ(ShortFormUQ):
         nli_model_name: str = "microsoft/deberta-large-mnli",
         sentence_transformer: str = "sentence-transformers/all-MiniLM-L6-v2",
         postprocessor: Any = None,
+        structured_response: Optional[Any] = None,
+        output_extractor: Optional[Any] = None,
         system_prompt: Optional[str] = None,
         max_calls_per_min: Optional[int] = None,
         sampling_temperature: float = 1.0,
@@ -77,6 +80,12 @@ class BlackBoxUQ(ShortFormUQ):
             A user-defined function that takes a string input and returns a string. Used for postprocessing
             outputs before black-box comparisons.
 
+        structured_response : Any, default=None
+            Specifies a structure such as a pydantic BaseModel class or a dict that is applied to the llm as `llm.with_structured_output(structured_response)`. Only used if `output_extractor` is not None.
+
+        output_extractor : callable, default=None
+            A user-defined function that is called on the output of an llm with structured output to extract the response. Only used if `structured_response` is not None.
+
         return_responses : str, default="all"
             If a postprocessor is used, specifies whether to return only postprocessed responses, only raw responses,
             or both. Specified with 'postprocessed', 'raw', or 'all', respectively.
@@ -103,7 +112,7 @@ class BlackBoxUQ(ShortFormUQ):
         verbose : bool, default=False
             Specifies whether to print the index of response currently being scored.
         """
-        super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor)
+        super().__init__(llm=llm, device=device, system_prompt=system_prompt, max_calls_per_min=max_calls_per_min, use_n_param=use_n_param, postprocessor=postprocessor, structured_response=structured_response, output_extractor=output_extractor)
         self.prompts = None
         self.max_length = max_length
         self.verbose = verbose
@@ -183,7 +192,7 @@ class BlackBoxUQ(ShortFormUQ):
             self.scorer_objects["semantic_negentropy"].progress_bar = self.progress_bar
             se_tmp = self.scorer_objects["semantic_negentropy"].score(responses=self.responses, sampled_responses=self.sampled_responses, _display_header=False)
             if "semantic_negentropy" in self.scorer_names:
-                self.scores_dict["semantic_negentropy"] = [1 - s for s in self.scorer_objects["semantic_negentropy"]._normalize_entropy(se_tmp.data["discrete_entropy_values"])]  # Convert to confidence score
+                self.scores_dict["semantic_negentropy"] = [1 - ne for ne in normalize_entropy(se_tmp.data["discrete_entropy_values"], num_responses=self.num_responses)]  # Convert to confidence score
             if "semantic_sets_confidence" in self.scorer_names:
                 self.scores_dict["semantic_sets_confidence"] = [(self.num_responses + 1 - s) / self.num_responses for s in se_tmp.data["num_semantic_sets"]]  # Convert to confidence score; max sets = num_responses + 1 (conf=0), min sets = 1 (conf=1)
             available_nli_scores = self.scorer_objects["semantic_negentropy"].clusterer.nli_scores

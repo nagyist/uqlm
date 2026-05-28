@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
 import numpy as np
+import pytest
 from uqlm.black_box import BertScorer, CosineScorer, MatchScorer
 from uqlm.black_box.baseclass.similarity_scorer import SimilarityScorer
 

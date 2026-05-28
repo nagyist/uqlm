@@ -26,6 +26,9 @@
   <a href="https://opensource.org/licenses/Apache-2.0">
     <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License">
   </a>
+  <a href="https://discord.gg/RjcrAPw43H">
+    <img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=lightgrey" alt="Discord">
+  </a>
   <a href="https://github.com/astral-sh/uv">
     <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv">
   </a>
@@ -112,7 +115,8 @@ Above, `use_best=True` implements mitigation so that the uncertainty-minimized r
 *   Entailment Probability ([Chen & Mueller, 2023](https://arxiv.org/abs/2308.16175); [Lin et al., 2024](https://arxiv.org/abs/2305.19187); [Manakul et al., 2023](https://arxiv.org/abs/2303.08896))
 *   Exact Match ([Cole et al., 2023](https://arxiv.org/abs/2305.14613); [Chen & Mueller, 2023](https://arxiv.org/abs/2308.16175))
 *   BERTScore ([Manakul et al., 2023](https://arxiv.org/abs/2303.08896); [Zheng et al., 2020](https://arxiv.org/abs/1904.09675))
-*   Cosine Similarity ([Shorinwa et al., 2024](https://arxiv.org/abs/2412.05563); [HuggingFace](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2))
+*   Cosine Similarity ([Shorinwa et al., 2024](https://arxiv.org/abs/2412.05563))
+* Functional Entropy for Code Generation ([Bouchard et al., 2026](https://arxiv.org/abs/2605.28500))
 
 ### White-Box Scorers (Token-Probability-Based)
 
@@ -370,7 +374,7 @@ The `uqlm` software package is described in this **[this paper](https://arxiv.or
 }
 ```
 
-The long-text methods and experiment results are described in **this paper**, available as a preprint on arXiv. To cite:
+The long-text methods and experiment results are described in [**this paper**](https://arxiv.org/abs/2602.17431), available as a preprint on arXiv. To cite:
 ```bibtex
 @misc{bouchard2026finegraineduncertaintyquantificationlongform,
       title={Fine-Grained Uncertainty Quantification for Long-Form Language Model Outputs: A Comparative Study}, 
@@ -380,5 +384,18 @@ The long-text methods and experiment results are described in **this paper**, av
       archivePrefix={arXiv},
       primaryClass={cs.CL},
       url={https://arxiv.org/abs/2602.17431}, 
+}
+```
+
+The code-specific methods and experiment results are described in [**this paper**](https://arxiv.org/abs/2605.28500), available as a preprint on arXiv. To cite:
+```bibtex
+@misc{bouchard2026functionalentropypredictingfunctional,
+      title={Functional Entropy: Predicting Functional Correctness in LLM-Generated Code with Uncertainty Quantification}, 
+      author={Dylan Bouchard and Mohit Singh Chauhan and Zeya Ahmad and Ho-Kyeong Ra},
+      year={2026},
+      eprint={2605.28500},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2605.28500}, 
 }
 ```
