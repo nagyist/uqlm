@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import pandas as pd
-from typing import Optional, Union
+from typing import List, Optional, Union
 from datasets import load_dataset, concatenate_datasets
 from datasets import disable_progress_bars
+import importlib.util
 import re
 import ast
 import numpy as np
+import warnings
 from copy import deepcopy
 
 """This module uses the _dataset_default_params dict to control what datasets load_example_dataset can load and how they are loaded.
@@ -86,7 +88,10 @@ _dataset_default_params = {
     "hotpotqa": {"load_params": {"path": "hotpotqa/hotpot_qa", "name": "distractor", "split": "validation"}, "extra_processing": {"subset_columns": ["question", "answer"]}},
     "simpleqa": {"load_params": {"path": "google/simpleqa-verified", "split": "eval"}, "extra_processing": {"subset_columns": ["question", "answer"], "rename_columns": {"problem": "question"}}},
     "livecodebench": {"load_params": {"path": "livecodebench/code_generation_lite", "split": "test"}, "extra_processing": {"subset_columns": ["question_title", "question_content", "platform", "question_id", "starter_code", "public_test_cases", "metadata", "difficulty"]}},
+    "factscore-stem-geo": {"load_params": {"loader": "_load_factscore_stem_geo_dataset"}, "extra_processing": {}},
 }
+
+USER_AGENT = "uqlm/0.6.0 (https://github.com/cvs-health/uqlm)"
 
 
 def list_dataset_names() -> list:
@@ -102,7 +107,7 @@ def list_dataset_names() -> list:
     -------
     >>> from uqlm.utils.dataloader import list_dataset_names
     >>> list_dataset_names()
-    ['ai2_arc', 'csqa', 'dialogue_sum', 'gsm8k', 'nq_open', 'popqa', 'svamp', 'triviaqa', 'factscore', 'hotpotqa', 'simpleqa','livecodebench']
+    ['ai2_arc', 'csqa', 'gsm8k', 'nq_open', 'popqa', 'svamp', 'factscore', 'hotpotqa', 'simpleqa', 'livecodebench', 'factscore-stem-geo']
     """
     return list(_dataset_default_params.keys())
 
@@ -115,7 +120,8 @@ def load_example_dataset(name: str, n: int = None, cols: Optional[Union[list, st
     ----------
     name : str
         The name of the dataset to load. Must be one of "svamp", "gsm8k", "ai2_arc",
-        "csqa", "nq_open", "popqa"
+        "csqa", "nq_open", "popqa", "factscore", "hotpotqa", "simpleqa",
+        "livecodebench", "factscore-stem-geo"
 
     n : int, optional
         Number of rows to load from the dataset.
@@ -136,6 +142,14 @@ def load_example_dataset(name: str, n: int = None, cols: Optional[Union[list, st
     if name in dataset_dict.keys():  # loads from huggingface hub
         disable_progress_bars()  # disable hf tqdm bars b/c it's a little ugly
         print(f"Loading dataset - {name}...")
+        if dataset_dict[name]["load_params"].get("loader") == "_load_factscore_stem_geo_dataset":
+            df = _load_factscore_stem_geo_dataset()
+            if cols:
+                df = _dataset_processing(df=df, subset_columns=cols)
+            if isinstance(n, int):
+                df = df.iloc[:n]
+            print("Dataset ready!")
+            return df
         if split:
             dataset_dict[name]["load_params"]["split"] = split
         ds = load_dataset(**dataset_dict[name]["load_params"])
@@ -301,3 +315,172 @@ def _combine_question_and_choices(df: pd.DataFrame, question_col: str, choice_co
     else:
         raise TypeError(f"'choice_col' must be str or list, but received '{type(choice_col)}'")
     return df
+
+
+FACTSCORE_STEM_GEO_ENTITIES = {
+    "nerve": [
+        "Abdominal aortic plexus",
+        "Abducens nerve",
+        "Accessory nerve",
+        "Ansa cervicalis",
+        "Axillary nerve",
+        "Brachial plexus",
+        "Cervical plexus",
+        "Facial nerve",
+        "Femoral nerve",
+        "Glossopharyngeal nerve",
+        "Hypoglossal nerve",
+        "Median nerve",
+        "Obturator nerve",
+        "Oculomotor nerve",
+        "Olfactory nerve",
+        "Optic nerve",
+        "Phrenic nerve",
+        "Radial nerve",
+        "Sciatic nerve",
+        "Tibial nerve",
+        "Trigeminal nerve",
+        "Ulnar nerve",
+        "Vagus nerve",
+        "Vestibulocochlear nerve",
+    ],
+    "scientific law or theorem": [
+        "Amdahl's law",
+        "Ampère's circuital law",
+        "Archimedes's principle",
+        "Avogadro's law",
+        "Bell's theorem",
+        "Benford's law",
+        "Beer-Lambert law",
+        "Bernoulli's principle",
+        "Boyle's law",
+        "Coulomb's law",
+        "Dirac equation",
+        "Doppler effect",
+        "Faraday's law of induction",
+        "Fermat's Last Theorem",
+        "Fick's law of diffusion",
+        "Fourier's law",
+        "Gauss's law",
+        "Heisenberg's uncertainty principle",
+        "Hooke's law",
+        "Kepler's laws of planetary motion",
+        "Kirchhoff's laws",
+        "Maxwell's equations",
+        "Moore's law",
+        "Newton's laws of motion",
+        "Noether's theorem",
+        "Ohm's law",
+        "Pascal's law",
+        "Pauli exclusion principle",
+        "Planck's law",
+        "Pythagorean theorem",
+        "Schrödinger equation",
+        "Snell's law",
+        "Zipf's law",
+    ],
+    "chemical element": [
+        "Hydrogen",
+        "Helium",
+        "Lithium",
+        "Beryllium",
+        "Boron",
+        "Carbon",
+        "Nitrogen",
+        "Oxygen",
+        "Fluorine",
+        "Neon",
+        "Sodium",
+        "Magnesium",
+        "Aluminium",
+        "Silicon",
+        "Phosphorus",
+        "Sulfur",
+        "Chlorine",
+        "Argon",
+        "Potassium",
+        "Calcium",
+        "Iron",
+        "Copper",
+        "Gold",
+        "Mercury",
+        "Lead",
+        "Uranium",
+    ],
+    "mountain": [
+        "Mount Everest",
+        "K2",
+        "Kangchenjunga",
+        "Lhotse",
+        "Makalu",
+        "Cho Oyu",
+        "Dhaulagiri I",
+        "Manaslu",
+        "Nanga Parbat",
+        "Annapurna I",
+        "Gasherbrum I",
+        "Broad Peak",
+        "Gasherbrum II",
+        "Shishapangma",
+        "Nanda Devi",
+        "Rakaposhi",
+        "Namcha Barwa",
+        "Kamet",
+        "Tirich Mir",
+        "Gangkhar Puensum",
+        "Gongga Shan",
+        "Muztagh Ata",
+        "Noshaq",
+        "Jengish Chokusu",
+        "Jomolhari",
+        "Baintha Brakk",
+        "K6",
+        "Langtang Lirung",
+    ],
+}
+
+
+def get_wiki_texts_from_entities(entities: List[str]) -> dict:
+    """
+    Retrieve Wikipedia article text for a list of entities.
+
+    Requires the optional ``wikipedia-api`` package. If more than 100 articles
+    are retrieved, only the 100 longest article texts are returned.
+    """
+    if importlib.util.find_spec("wikipediaapi") is None:
+        message = "The optional dependency 'wikipedia-api' is required to load 'factscore-stem-geo'. Install it with `pip install wikipedia-api`."
+        warnings.warn(message, UserWarning, stacklevel=2)
+        raise ImportError(message)
+
+    import wikipediaapi
+
+    wiki_wiki = wikipediaapi.Wikipedia(user_agent=USER_AGENT, language="en")
+    texts = {}
+    for entity in entities:
+        page = wiki_wiki.page(entity)
+        page_text = page.text
+        if page_text:
+            texts[entity] = page_text
+
+    if len(texts) > 100:
+        sorted_entities = sorted(texts.keys(), key=lambda x: len(texts[x]), reverse=True)[:100]
+        texts = {entity: texts[entity] for entity in sorted_entities}
+
+    return texts
+
+
+def _load_factscore_stem_geo_dataset() -> pd.DataFrame:
+    rows = []
+    for entity_type, entities in FACTSCORE_STEM_GEO_ENTITIES.items():
+        wiki_texts = get_wiki_texts_from_entities(entities)
+        rows.extend(
+            {
+                "entity_type": entity_type,
+                "entity": entity,
+                "question": f"Write a paragraph with some facts about the {entity_type} {entity}.",
+                "wikipedia_text": wiki_text,
+            }
+            for entity, wiki_text in wiki_texts.items()
+        )
+
+    return pd.DataFrame(rows)
