@@ -343,7 +343,7 @@ results = await cguq.generate_and_score(prompts=prompts, num_responses=5)
 results.to_df()
 ```
 
-For a more detailed demo, refer to our [`CodeGenUQ` Demo](./examples/code_gen_demo.ipynb). More details on code generation scorers are available in [Bouchard et al., 2026](https://arxiv.org/abs/2605.28500).
+For a more detailed demo, refer to our [`CodeGenUQ` Demo](./examples/codegen_demo.ipynb). More details on code generation scorers are available in [Bouchard et al., 2026](https://arxiv.org/abs/2605.28500).
 
 ## Documentation
 Check out our [documentation site](https://cvs-health.github.io/uqlm/latest/index.html) for detailed instructions on using this package, including API reference and more.
