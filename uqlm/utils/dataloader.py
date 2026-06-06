@@ -143,11 +143,12 @@ def load_example_dataset(name: str, n: int = None, cols: Optional[Union[list, st
         disable_progress_bars()  # disable hf tqdm bars b/c it's a little ugly
         print(f"Loading dataset - {name}...")
         if dataset_dict[name]["load_params"].get("loader") == "_load_factscore_stem_geo_dataset":
+            if isinstance(n, int):
+                print("Note: the 'n' parameter is not used for 'factscore-stem-geo' — all available articles will be returned.")
+            print("Fetching Wikipedia articles — this may take a few minutes...")
             df = _load_factscore_stem_geo_dataset()
             if cols:
                 df = _dataset_processing(df=df, subset_columns=cols)
-            if isinstance(n, int):
-                df = df.iloc[:n]
             print("Dataset ready!")
             return df
         if split:
