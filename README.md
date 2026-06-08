@@ -116,7 +116,7 @@ Above, `use_best=True` implements mitigation so that the uncertainty-minimized r
 *   Exact Match ([Cole et al., 2023](https://arxiv.org/abs/2305.14613); [Chen & Mueller, 2023](https://arxiv.org/abs/2308.16175))
 *   BERTScore ([Manakul et al., 2023](https://arxiv.org/abs/2303.08896); [Zheng et al., 2020](https://arxiv.org/abs/1904.09675))
 *   Cosine Similarity ([Shorinwa et al., 2024](https://arxiv.org/abs/2412.05563))
-* Functional Entropy for Code Generation ([Bouchard et al., 2026](https://arxiv.org/abs/2605.28500))
+*   Code-adapted scorers via [`CodeGenUQ`](#code-generation-uq).
 
 ### White-Box Scorers (Token-Probability-Based)
 
@@ -321,6 +321,29 @@ Above `response` and `entailment` reflect the original response and response-lev
 *   LUQ scorers ([Zhang et al., 2024](https://arxiv.org/abs/2403.20279); [Zhang et al., 2025](https://arxiv.org/abs/2410.13246))
 *   Graph-based scorers ([Jiang et al., 2024](https://arxiv.org/abs/2410.20783))
 *   Generalized long-form semantic entropy ([Farquhar et al., 2024](https://www.nature.com/articles/s41586-024-07421-0))
+
+
+### Code Generation UQ
+
+For code-generation tasks, UQLM provides `CodeGenUQ`, a specialized interface for predicting whether LLM-generated code is functionally correct without requiring execution. `CodeGenUQ` includes white-box scorers, code-adapted black-box scorers based on functional equivalence, and reflexive self-evaluation scorers. The white-box methods are the same token-probability-based scorers available through `WhiteBoxUQ`. 
+
+**Example Usage:**
+
+```python
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(model="gpt-4o-mini")
+
+from uqlm import CodeGenUQ
+cguq = CodeGenUQ(
+    llm=llm,
+    scorers=["functional_equivalence_rate"]
+)
+
+results = await cguq.generate_and_score(prompts=prompts, num_responses=5)
+results.to_df()
+```
+
+For a more detailed demo, refer to our [`CodeGenUQ` Demo](./examples/codegen_demo.ipynb). More details on code generation scorers are available in [Bouchard et al., 2026](https://arxiv.org/abs/2605.28500).
 
 ## Documentation
 Check out our [documentation site](https://cvs-health.github.io/uqlm/latest/index.html) for detailed instructions on using this package, including API reference and more.
