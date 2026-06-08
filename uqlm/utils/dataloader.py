@@ -124,8 +124,8 @@ def load_example_dataset(name: str, n: int = None, cols: Optional[Union[list, st
         "livecodebench", "factscore-stem-geo"
 
     n : int, optional
-        Number of rows to load from the dataset.
-
+        Number of rows to load from the dataset. Ignored for "factscore-stem-geo",
+        which always returns the longest 100 articles for each of four categories."
     Returns
     -------
     pd.DataFrame
@@ -144,7 +144,7 @@ def load_example_dataset(name: str, n: int = None, cols: Optional[Union[list, st
         print(f"Loading dataset - {name}...")
         if dataset_dict[name]["load_params"].get("loader") == "_load_factscore_stem_geo_dataset":
             if isinstance(n, int):
-                print("Note: the 'n' parameter is not used for 'factscore-stem-geo' — all available articles will be returned.")
+                print("""Note: the 'n' parameter is not used for 'factscore-stem-geo' — the longest 100 articles will be returned for four categories: chemical elements, nerves in the human body, mountains on Earth, and scientific laws.""")
             print("Fetching Wikipedia articles — this may take a few minutes...")
             df = _load_factscore_stem_geo_dataset()
             if cols:
