@@ -1040,7 +1040,7 @@ FACTSCORE_STEM_GEO_ENTITIES = {
 }
 
 
-def get_wiki_texts_from_entities(entities: List[str]) -> dict:
+def _get_wiki_texts_from_entities(entities: List[str]) -> dict:
     """
     Retrieve Wikipedia article text for a list of entities.
 
@@ -1072,7 +1072,7 @@ def get_wiki_texts_from_entities(entities: List[str]) -> dict:
 def _load_factscore_stem_geo_dataset() -> pd.DataFrame:
     rows = []
     for entity_type, entities in FACTSCORE_STEM_GEO_ENTITIES.items():
-        wiki_texts = get_wiki_texts_from_entities(entities)
+        wiki_texts = _get_wiki_texts_from_entities(entities)
         rows.extend({"entity_type": entity_type, "entity": entity, "question": f"Write a paragraph with some facts about the {entity_type} {entity}.", "wikipedia_text": wiki_text} for entity, wiki_text in wiki_texts.items())
 
     return pd.DataFrame(rows)
